@@ -1,59 +1,59 @@
-# OpenAI Agents SDK Template - Haiku Orchestration
+# OpenAI Agents SDK Orchestration Template
 
-A didactic example project showing how to orchestrate AI agents with the `openai-agents` SDK in Python.
+A didactic Python example showing how to create agents, chain handoffs, and expose everything through a FastAPI API.
 
-This template creates two agents:
-- `Haiku Writer`: writes a haiku for a given subject.
-- `Haiku Evaluator`: evaluates the haiku quality using basic haiku conventions.
+The project includes two main flows:
+- `GPT`: a lightweight wrapper over OpenAI `responses.parse`.
+- `GPTAgent`: a wrapper based on `openai-agents` and `Runner.run(...)`.
 
-The project is intentionally small, so it is easy to study and extend.
+## What this project demonstrates
 
-## What This Project Demonstrates
+- Agent orchestration structure in Python.
+- Typed outputs with Pydantic (`BaseModel`).
+- Agent instructions loaded from local Markdown files.
+- Sync and async execution patterns.
+- HTTP API exposure with FastAPI.
 
-- How to structure a simple multi-agent orchestration in Python
-- How to define typed outputs with Pydantic (`BaseModel`)
-- How to include external knowledge from a local Markdown file
-- How to execute an async agent workflow and expose a sync entrypoint
-
-## Project Structure
+## Project structure
 
 ```text
 .
 |-- app/
 |   |-- main.py
+|   |-- test_gpt.py
+|   |-- test_gpt_agents.py
+|   |-- assets/
+|   |   `-- instructions/
+|   |       |-- writer.md
+|   |       |-- evaluator.md
+|   |       `-- translator.md
 |   `-- orchestration/
-|       |-- haiku_agents.py
-|       `-- knowledge/
-|           `-- haiku_writer.md
+|       |-- gpt.py
+|       |-- gpt_agent.py
+|       `-- util.py
 |-- env-example
 |-- requirements.txt
 `-- LICENSE
 ```
 
-## Requirements
+## Prerequisites
 
 - Python 3.10+
-- OpenAI API key
+- OpenAI API key (`OPENAI_API_KEY`)
 
-Dependencies (from `requirements.txt`):
-- `openai-agents`
+Project dependencies:
 - `python-dotenv`
+- `openai-agents`
+- `fastapi`
+- `uvicorn`
 
 ## Setup
 
-1. Clone the repository.
-2. Create and activate a virtual environment.
-3. Install dependencies.
-4. Create your `.env` file from `env-example`.
+1. Create and activate a virtual environment.
+2. Install dependencies.
+3. Create a `.env` file with your key.
 
-### 1) Create and activate a virtual environment
-
-Windows (PowerShell):
-
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
+### 1) Virtual environment
 
 macOS/Linux:
 
@@ -62,22 +62,31 @@ python -m venv venv
 source venv/bin/activate
 ```
 
+Windows (PowerShell):
+
+```powershell
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
 ### 2) Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3) Configure environment variables
+### 3) Environment variables
 
-Create `.env` in the project root with:
+Use `env-example` as a base and create `.env` in the project root:
 
 ```env
 OPENAI_MODEL_NAME="gpt-4.1-mini"
 OPENAI_API_KEY="your-api-key"
 ```
 
-## Run the Project
+Note: the model is currently hardcoded in the code (`gpt-4.1-mini`), so `OPENAI_MODEL_NAME` is not yet used by the main modules.
+
+## Running the API
 
 From the project root:
 
@@ -85,57 +94,55 @@ From the project root:
 python -m app.main
 ```
 
-Expected behavior:
-- The script asks the writer agent for a haiku about `recursion in programming`.
-- The final typed response is printed with:
-  - `Subject`
-  - `Haiku`
-  - `Score`
+Or with auto-reload:
 
-## How It Works
+```bash
+uvicorn app.main:app --reload
+```
 
-### 1) Output model (`HaikuResponse`)
+The API runs at `http://localhost:8000`.
 
-In `app/orchestration/haiku_agents.py`, the response is typed with Pydantic:
-- `subject: str`
-- `haiku: str`
-- `score: int`
+## Endpoints
 
-This ensures consistent output shape from the agent workflow.
+- `GET /health`: health check.
+- `POST /haiku`: generates and evaluates a haiku for the given subject.
 
-### 2) Knowledge loading
+Request example:
 
-The method `__get_knowledge()` loads `app/orchestration/knowledge/haiku_writer.md`.
+```bash
+curl -X POST http://localhost:8000/haiku \
+  -H "Content-Type: application/json" \
+  -d '{"subject":"the changing seasons"}'
+```
 
-That text is appended to the writer agent instructions, giving the model local guidance on haiku style.
+Response example:
 
-### 3) Agent creation
+```json
+{
+  "subject": "the changing seasons",
+  "haiku": "Old leaves on the ground\nFirst light touches waking branches\nSpring breathes through the mist",
+  "score": 8
+}
+```
 
-`__create_agents()` defines:
-- **Haiku Evaluator**: strict reviewer instructions
-- **Haiku Writer**: writes the poem and can hand off to evaluator
+## Local examples (without FastAPI)
 
-Both currently use `gpt-4.1-mini` as a fixed model in code.
+- `app/test_gpt.py`: simple translation using the `GPT` wrapper.
+- `app/test_gpt_agents.py`: `writer` + `evaluator` flow using `GPTAgent`.
 
-### 4) Execution
+Run them with:
 
-- `run(subject)` executes asynchronously with `Runner.run(...)`
-- `run_sync(subject)` wraps it with `asyncio.run(...)`
-- `app/main.py` uses `run_sync(...)` for a simple CLI-style run
+```bash
+python -m app.test_gpt
+python -m app.test_gpt_agents
+```
 
-## Customize
+## Customization
 
-You can extend this template by:
-- Changing the subject in `app/main.py`
-- Editing `haiku_writer.md` to alter writing style
-- Adjusting evaluator strictness in agent instructions
-- Adding more agents and handoff paths
-
-## Notes
-
-- A `.env` file is loaded with `python-dotenv`.
-- Keep your `OPENAI_API_KEY` private and never commit it.
-- The model value from `.env` is present, but the current code sets model names directly in `haiku_agents.py`.
+- Edit instructions in `app/assets/instructions/*.md`.
+- Change the model in `app/main.py`, `app/test_gpt.py`, and `app/test_gpt_agents.py`.
+- Create new agents in `app/orchestration/gpt_agent.py` and add new handoffs.
+- Reuse `instruction_loader(...)` to keep prompts outside source code.
 
 ## License
 
