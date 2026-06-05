@@ -1,12 +1,14 @@
-import os
+from pathlib import Path
 from typing import Optional
 
 
+DEFAULT_INSTRUCTION_FOLDER = Path(__file__).resolve().parents[1] / "assets" / "instructions"
+
 def instruction_loader(
     instruction_id: str,
-    instruction_folder: str = "app/assets/instructions",
+    instruction_folder: str | Path = DEFAULT_INSTRUCTION_FOLDER,
     encoding: str = "utf-8",
-    default: Optional[str] = None
+    default: Optional[str] = None,
 ) -> str:
     """
     Load instructions from a file.
@@ -23,12 +25,12 @@ def instruction_loader(
     Raises:
         FileNotFoundError: If file does not exist and no default is provided.
     """
-    instruction_file = os.path.join(instruction_folder, f"{instruction_id}.md")
+    instruction_file = Path(instruction_folder) / f"{instruction_id}.md"
 
-    if not os.path.exists(instruction_file):
+    if not instruction_file.exists():
         if default is not None:
             return default
         raise FileNotFoundError(f"Instruction file not found: {instruction_file}")
 
-    with open(instruction_file, "r", encoding=encoding) as file:
+    with instruction_file.open("r", encoding=encoding) as file:
         return file.read().strip()

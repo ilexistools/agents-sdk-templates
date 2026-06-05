@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 from app.orchestration import gpt_agent
+from app.orchestration.config import default_model
 from app.orchestration.util import instruction_loader
 
 
@@ -17,13 +18,14 @@ class HaikuRequest(BaseModel):
 
 app = FastAPI(title="GPT Agents + FastAPI Example")
 
+MODEL_NAME = default_model()
 
 evaluator = gpt_agent.GPTAgent(
     name="Haiku Evaluator",
     role="You are a strict but helpful haiku reviewer.",
     instructions=instruction_loader("evaluator"),
     output_type=HaikuResponse,
-    model="gpt-4.1-mini",
+    model=MODEL_NAME,
 )
 
 writer = gpt_agent.GPTAgent(
@@ -32,7 +34,7 @@ writer = gpt_agent.GPTAgent(
     instructions=instruction_loader("writer"),
     output_type=HaikuResponse,
     handoffs=[evaluator],
-    model="gpt-4.1-mini",
+    model=MODEL_NAME,
 )
 
 
@@ -49,4 +51,5 @@ async def write_haiku(payload: HaikuRequest) -> HaikuResponse:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
