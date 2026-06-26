@@ -1,14 +1,9 @@
 from app.orchestration import gpt
-from app.orchestration.config import default_model
-from app.orchestration.util import instruction_loader
 
 
 def translate(text: str):
     translator = gpt.GPT(
-        name="Translator",
-        role="You are a helpful assistant that translates text.",
-        instructions=instruction_loader("translator"),
-        model=default_model(),
+        agent_id="translator",
         output_type=gpt.GPTResponse,
     )
     prompt = f"Translate the following text: {text}"

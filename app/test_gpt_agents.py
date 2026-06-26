@@ -1,8 +1,5 @@
 from pydantic import BaseModel
-
-from app.orchestration import gpt_agent
-from app.orchestration.config import default_model
-from app.orchestration.util import instruction_loader
+from app.orchestration.gpt_agent import GPTAgent
 
 
 class HaikuResponse(BaseModel):
@@ -11,27 +8,9 @@ class HaikuResponse(BaseModel):
     score: int
 
 
-MODEL_NAME = default_model()
-
-evaluator = gpt_agent.GPTAgent(
-    name="Haiku Evaluator",
-    role="You are a strict but helpful haiku reviewer.",
-    instructions=instruction_loader("evaluator"),
-    output_type=HaikuResponse,
-    model=MODEL_NAME,
-)
-
-writer = gpt_agent.GPTAgent(
-    name="Haiku Agent",
-    role="You are a helpful assistant that writes haikus.",
-    instructions=instruction_loader("writer"),
-    output_type=HaikuResponse,
-    handoffs=[evaluator],
-    model=MODEL_NAME,
-)
-
-
 def write_haiku(subject: str):
+    evaluator = GPTAgent(agent_id='evaluator', output_type=HaikuResponse)
+    writer = GPTAgent(agent_id='writer', output_type=HaikuResponse, handoffs=[evaluator])
     prompt = f"Write a haiku about {subject}."
     result = writer.run_sync(prompt)
     return result

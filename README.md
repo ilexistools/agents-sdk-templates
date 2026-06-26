@@ -14,7 +14,7 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 
 - Agent orchestration structure in Python.
 - Typed outputs with Pydantic (`BaseModel`).
-- Agent instructions loaded from Markdown files.
+- Agent definitions loaded from Markdown files via `agent_id`.
 - Sync and async execution patterns.
 - Handoffs between agents.
 - Optional MCP server integration for `GPTAgent` and `GPTSandboxAgent`.
@@ -31,10 +31,11 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 |   |-- test_gpt_agents.py
 |   |-- test_gpt_sandbox_agent.py
 |   |-- assets/
-|   |   |-- instructions/
+|   |   |-- agents/
 |   |   |   |-- writer.md
 |   |   |   |-- evaluator.md
-|   |   |   `-- translator.md
+|   |   |   |-- translator.md
+|   |   |   `-- template.md
 |   |   `-- skills/
 |   |       `-- haiku_quality/
 |   |           `-- SKILL.md
@@ -44,21 +45,23 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 |       |-- gpt_agent.py
 |       |-- gpt_sandbox_agent.py
 |       `-- util.py
+|-- pyproject.toml
+|-- uv.lock
 |-- env-example
-|-- requirements.txt
 `-- LICENSE
 ```
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.12+
 - OpenAI API key (`OPENAI_API_KEY`)
 
-Project dependencies:
+Project dependencies (defined in `pyproject.toml`):
 
 - `openai`
-- `python-dotenv`
 - `openai-agents`
+- `python-dotenv`
+- `pyyaml`
 - `fastapi`
 - `uvicorn`
 
@@ -66,11 +69,20 @@ Project dependencies:
 
 ### 1. Create A Virtual Environment
 
+With [uv](https://github.com/astral-sh/uv) (recommended):
+
+```bash
+uv sync
+```
+
+Or with pip:
+
 macOS/Linux:
 
 ```bash
 python -m venv venv
 source venv/bin/activate
+pip install -e .
 ```
 
 Windows PowerShell:
@@ -78,15 +90,10 @@ Windows PowerShell:
 ```powershell
 python -m venv venv
 .\venv\Scripts\Activate.ps1
+pip install -e .
 ```
 
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure Environment Variables
+### 2. Configure Environment Variables
 
 Use `env-example` as a base and create a `.env` file in the project root:
 
@@ -96,40 +103,102 @@ OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
 OPENAI_API_KEY="your-api-key"
 ```
 
-`OPENAI_MODEL_NAME` is the default model for the regular `GPT` and `GPTAgent` examples. If omitted, the project defaults to `gpt-4.1-mini`.
+`OPENAI_MODEL_NAME` is the default model for `GPT` and `GPTAgent`. If omitted, defaults to `gpt-4.1-mini`.
 
-`OPENAI_SANDBOX_MODEL_NAME` is intended for sandbox experiments. Sandbox agents use model-facing tools that rely on custom tool support, so a GPT-5-family model such as `gpt-5-mini` is a safer default than `gpt-4.1-mini`.
+`OPENAI_SANDBOX_MODEL_NAME` is used by `GPTSandboxAgent`. Sandbox agents rely on custom tool support, so a GPT-5-family model such as `gpt-5-mini` is recommended.
+
+## Agent Definitions
+
+Agents are defined as Markdown files under `app/assets/agents/`. Each file has a YAML frontmatter block followed by named sections.
+
+Example — `app/assets/agents/writer.md`:
+
+```markdown
+---
+id: writer
+role: Haiku Writer
+goal: Write short, evocative haiku poems based on a theme provided by the user.
+backstory: You are a skilled haiku writer with a deep sensitivity to nature and everyday moments.
+max_tokens: 256
+model: gpt-4.1-mini
+---
+
+# INPUT
+A theme, image, or feeling to inspire the haiku.
+
+# OUTPUT
+class HaikuResponse(BaseModel):
+    subject: str
+    haiku: str
+    score: int
+
+# INSTRUCTIONS
+- Write one haiku based on the user's input.
+...
+
+# KNOWLEDGE
+How to write haiku...
+```
+
+### Frontmatter Fields
+
+| Field | Description |
+|---|---|
+| `id` | Identifier used as `agent_id` when loading |
+| `role` | System role prepended to instructions |
+| `goal` | Primary objective of the agent |
+| `backstory` | Background context for the agent |
+| `model` | Model override (falls back to `OPENAI_MODEL_NAME`) |
+| `max_tokens` | Maximum output tokens (default: 2048) |
+
+### Loading An Agent By ID
+
+Pass `agent_id` to any wrapper class to load everything from the markdown file:
+
+```python
+from app.orchestration.gpt_agent import GPTAgent
+
+agent = GPTAgent(agent_id="writer", output_type=HaikuResponse)
+result = agent.run_sync("Write a haiku about autumn.")
+```
+
+The agent name, role, instructions, model, and token limit are all read from the file. You can still override individual fields at the call site — for example, `output_type`, `tools`, `handoffs`, or `mcp_url`.
+
+### Loading Manually (without `agent_id`)
+
+You can still configure agents fully in code by omitting `agent_id`:
+
+```python
+agent = GPTAgent(
+    name="Haiku Agent",
+    role="You are a helpful assistant that writes haikus.",
+    instructions="Write one haiku per request.",
+    output_type=HaikuResponse,
+    model="gpt-4.1-mini",
+)
+```
 
 ## Configuration Helpers
 
-Shared environment/model logic lives in `app/orchestration/config.py`.
+Shared environment and model logic lives in `app/orchestration/config.py`.
 
 ```python
 from app.orchestration.config import default_model, sandbox_model
 
-regular_model = default_model()
-sandbox_default = sandbox_model()
+regular_model = default_model()   # reads OPENAI_MODEL_NAME
+sandbox_default = sandbox_model() # reads OPENAI_SANDBOX_MODEL_NAME
 ```
 
-`default_model()` reads `OPENAI_MODEL_NAME`.
-
-`sandbox_model()` reads `OPENAI_SANDBOX_MODEL_NAME` and falls back to `gpt-5-mini`.
-
-Instruction files are loaded with `instruction_loader(...)` from `app/orchestration/util.py`.
+The utility `load_agent_config` in `app/orchestration/util.py` is used internally by all three wrapper classes to load and assemble agent configuration from a markdown file:
 
 ```python
-from app.orchestration.util import instruction_loader
+from app.orchestration.util import load_agent_config
 
-instructions = instruction_loader("writer")
+config = load_agent_config("writer", fallback_model=default_model())
+# config keys: name, role, instructions, model, max_tokens
 ```
 
-By default, `instruction_loader("writer")` reads:
-
-```text
-app/assets/instructions/writer.md
-```
-
-This keeps prompts outside Python source code and makes them easy to edit independently.
+The lower-level `load_agent_markdown` returns the raw parsed dict with `metadata` and `sections` if you need direct access to the file structure.
 
 ## Running The API
 
@@ -186,28 +255,26 @@ python -m app.test_gpt_sandbox_agent
 
 ### `app/test_gpt.py`
 
-Demonstrates the lightweight `GPT` wrapper.
+Demonstrates the lightweight `GPT` wrapper loaded from a markdown agent file.
 
 Use this when you want a simple Responses API call with typed parsing and do not need agent handoffs, MCP, or sandbox capabilities.
 
 ### `app/test_gpt_agents.py`
 
-Demonstrates `GPTAgent` with a writer/evaluator flow.
+Demonstrates `GPTAgent` with a writer/evaluator flow using `agent_id`.
 
-The writer agent creates the haiku. The evaluator agent is passed as a handoff-capable agent. The final output is parsed into a Pydantic model:
+Both agents are loaded from their respective markdown files. The writer agent creates the haiku; the evaluator is passed as a handoff target. Both receive a custom `output_type` at construction:
 
 ```python
-class HaikuResponse(BaseModel):
-    subject: str
-    haiku: str
-    score: int
+evaluator = GPTAgent(agent_id='evaluator', output_type=HaikuResponse)
+writer = GPTAgent(agent_id='writer', output_type=HaikuResponse, handoffs=[evaluator])
 ```
 
 ### `app/test_gpt_sandbox_agent.py`
 
-Demonstrates `GPTSandboxAgent` with local sandbox skills.
+Demonstrates `GPTSandboxAgent` with local sandbox skills loaded from an agent markdown file.
 
-This is a real integration example: it calls the model and uses the sandbox-capable agent. Because it makes an external OpenAI API call, it requires a valid `OPENAI_API_KEY`.
+This example makes a real OpenAI API call and requires a valid `OPENAI_API_KEY`.
 
 ## `GPTAgent` With MCP
 
@@ -216,13 +283,7 @@ This is a real integration example: it calls the model and uses the sandbox-capa
 Without MCP:
 
 ```python
-agent = GPTAgent(
-    name="Haiku Agent",
-    role="You are a helpful assistant that writes haikus.",
-    instructions=instruction_loader("writer"),
-    output_type=HaikuResponse,
-)
-
+agent = GPTAgent(agent_id="writer", output_type=HaikuResponse)
 result = agent.run_sync("Write a haiku about the changing seasons.")
 ```
 
@@ -230,25 +291,17 @@ With MCP:
 
 ```python
 agent = GPTAgent(
-    name="MCP Agent",
-    role="You are a helpful assistant with access to MCP tools.",
-    instructions="Use available tools when they help answer the user.",
-    output_type=GPTAgentResponse,
+    agent_id="writer",
+    output_type=HaikuResponse,
     mcp_url="http://localhost:8001/mcp",
     mcp_headers={"Authorization": "Bearer token-if-needed"},
     mcp_timeout=30,
 )
 
-result = agent.run_sync("Use the available tools to answer this request.")
+result = agent.run_sync("Write a haiku using the available tools.")
 ```
 
-When `mcp_url` is omitted, `GPTAgent` behaves like the original implementation and simply calls:
-
-```python
-Runner.run(agent, prompt)
-```
-
-When `mcp_url` is provided, `GPTAgent` opens an `MCPServerStreamableHttp` connection for the run and assigns it to `self.mcp_servers`.
+When `mcp_url` is omitted, `GPTAgent` calls `Runner.run(agent, prompt)` directly. When provided, it opens an `MCPServerStreamableHttp` connection for the run and assigns it to `self.mcp_servers`.
 
 ## `GPTSandboxAgent` And Skills
 
@@ -266,50 +319,50 @@ The current sample skill is:
 app/assets/skills/haiku_quality/SKILL.md
 ```
 
-That skill gives the agent review criteria for haiku:
-
-- three lines;
-- approximate 5-7-5 syllable target;
-- concrete imagery;
-- restrained explanation;
-- strict integer scoring.
+That skill gives the agent review criteria for haiku: three lines, approximate 5-7-5 syllable target, concrete imagery, restrained explanation, and strict integer scoring.
 
 Example:
 
 ```python
-from app.orchestration.config import sandbox_model
-
-writer = GPTSandboxAgent(
-    name="Haiku Agent",
-    role="You are a helpful assistant that writes haikus.",
-    instructions=instruction_loader("writer"),
-    output_type=HaikuResponse,
-    model=sandbox_model(),
-    skills_dir="app/assets/skills",
-)
-
+writer = GPTSandboxAgent(agent_id="writer", output_type=HaikuResponse)
 result = writer.run_sync("Write a haiku about the changing seasons.")
 ```
 
-You can also pass:
+You can override the skills directory:
 
 ```python
-skills_dir="assets/skills"
+writer = GPTSandboxAgent(
+    agent_id="writer",
+    output_type=HaikuResponse,
+    skills_dir="app/assets/skills",
+)
 ```
 
-The wrapper resolves that project-relative path to `app/assets/skills` when possible.
+The wrapper resolves project-relative paths to `app/assets/skills` when possible.
+
+### Sandbox Backend
+
+On macOS/Linux, `GPTSandboxAgent` uses `UnixLocalSandboxClient` by default. On Windows, it falls back to `DockerSandboxClient` (requires Docker Desktop and the `docker` Python package). You can also pass a custom client:
+
+```python
+from agents.sandbox.sandboxes.docker import DockerSandboxClient
+
+writer = GPTSandboxAgent(
+    agent_id="writer",
+    output_type=HaikuResponse,
+    sandbox_client=DockerSandboxClient(),
+)
+```
 
 ## How To Know A Skill Is Being Used
 
-Loading a skill directory makes the skill available to the sandbox agent. It does not automatically prove that the model used the skill in a particular response.
+Loading a skill directory makes the skill available to the sandbox agent at the `.agents/` path inside the workspace. It does not automatically prove that the model used the skill in a particular response.
 
 For stronger evidence during testing, use one or more of these strategies:
 
-- Mention the skill explicitly in the prompt, for example: `Use the Haiku Quality skill.`
+- Mention the skill explicitly in the prompt: `Use the Haiku Quality skill.`
 - Add an artificial test-only rule to a skill, such as `always return score=6`, then assert that value.
 - Inspect traces or intermediate run steps if you enable tracing for the Agents SDK.
-
-For normal product behavior, the skill should contain useful domain guidance. For tests, a deliberately obvious rule is often better because it turns skill usage into something you can assert.
 
 ## Sync Versus Async
 
@@ -319,29 +372,22 @@ Every wrapper exposes an async method:
 result = await agent.run(prompt)
 ```
 
-The wrappers also expose a sync convenience method:
+And a sync convenience method:
 
 ```python
 result = agent.run_sync(prompt)
 ```
 
-Do not call `run_sync(...)` inside an already-running event loop. In async contexts such as FastAPI endpoints, use:
-
-```python
-result = await agent.run(prompt)
-```
-
-The wrappers raise a clear `RuntimeError` if `run_sync(...)` is called from inside an active event loop.
+Do not call `run_sync(...)` inside an already-running event loop. In async contexts such as FastAPI endpoints, use `await agent.run(prompt)`. The wrappers raise a clear `RuntimeError` if `run_sync(...)` is called from inside an active event loop.
 
 ## Customization
 
-- Edit instructions in `app/assets/instructions/*.md`.
-- Edit or add skills under `app/assets/skills/<skill_name>/SKILL.md`.
-- Change the regular model with `OPENAI_MODEL_NAME` in `.env`.
-- Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`, or pass `model=...` directly.
-- Add handoffs by passing `handoffs=[other_agent]`.
+- Add or edit agent definitions under `app/assets/agents/<id>.md`.
+- Add or edit skills under `app/assets/skills/<skill_name>/SKILL.md`.
+- Change the regular model with `OPENAI_MODEL_NAME` in `.env`, or set `model` in the agent markdown frontmatter.
+- Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`.
+- Add handoffs by passing `handoffs=[other_agent]` at construction time.
 - Add MCP by passing `mcp_url`, `mcp_headers`, and `mcp_timeout`.
-- Reuse `instruction_loader(...)` to keep prompts outside source code.
 
 ## Troubleshooting
 
@@ -369,11 +415,15 @@ Use a GPT-5-family model for sandbox examples:
 OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
 ```
 
-or pass it directly:
+Or set it in the agent markdown frontmatter:
 
-```python
-model="gpt-5-mini"
+```yaml
+model: gpt-5-mini
 ```
+
+### `ImportError: UnixLocalSandbox is not supported on Windows`
+
+This error should not occur with the current code, which automatically selects `DockerSandboxClient` on Windows. If you see it, ensure you are running the latest version and that Docker Desktop is running.
 
 ### The Skill Exists, But The Output Does Not Prove It Was Used
 
