@@ -2,11 +2,13 @@
 
 A didactic Python template for experimenting with OpenAI orchestration patterns.
 
-The project shows three complementary ways to call OpenAI models:
+The project shows five complementary ways to call models:
 
 - `GPT`: a lightweight wrapper over the OpenAI Responses API with typed parsing.
 - `GPTAgent`: a wrapper over `openai-agents` using `Agent` and `Runner.run(...)`.
 - `GPTSandboxAgent`: a sandbox-capable wrapper using `SandboxAgent`, local skills, optional MCP, and a sandbox runtime.
+- `GPTLocal`: a wrapper that calls any OpenAI-compatible local server (LM Studio, Ollama, etc.) via `chat.completions`.
+- `GPTLocalAgent`: same as `GPTAgent` but pointed at a local server via `OpenAIChatCompletionsModel`.
 
 It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 
@@ -20,6 +22,7 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 - Optional MCP server integration for `GPTAgent` and `GPTSandboxAgent`.
 - Local sandbox skills loaded from `app/assets/skills`.
 - HTTP API exposure with FastAPI.
+- Local open-source model support via any OpenAI-compatible server.
 
 ## Project Structure
 
@@ -30,6 +33,8 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 |   |-- test_gpt.py
 |   |-- test_gpt_agents.py
 |   |-- test_gpt_sandbox_agent.py
+|   |-- test_gpt_local.py
+|   |-- test_gpt_agent_local.py
 |   |-- assets/
 |   |   |-- agents/
 |   |   |   |-- writer.md
@@ -44,6 +49,8 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 |       |-- gpt.py
 |       |-- gpt_agent.py
 |       |-- gpt_sandbox_agent.py
+|       |-- gpt_local.py
+|       |-- gpt_agent_local.py
 |       `-- util.py
 |-- pyproject.toml
 |-- uv.lock
@@ -101,11 +108,18 @@ Use `env-example` as a base and create a `.env` file in the project root:
 OPENAI_MODEL_NAME="gpt-4.1-mini"
 OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
 OPENAI_API_KEY="your-api-key"
+
+# Local model server (LM Studio, Ollama, etc.)
+LOCAL_BASE_URL="http://localhost:1234/v1"
+LOCAL_MODEL_NAME="local-model"
+LOCAL_API_KEY="lm-studio"
 ```
 
 `OPENAI_MODEL_NAME` is the default model for `GPT` and `GPTAgent`. If omitted, defaults to `gpt-4.1-mini`.
 
 `OPENAI_SANDBOX_MODEL_NAME` is used by `GPTSandboxAgent`. Sandbox agents rely on custom tool support, so a GPT-5-family model such as `gpt-5-mini` is recommended.
+
+`LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` are used by `GPTLocal` and `GPTLocalAgent`. See [Local Models](#local-models-lm-studio-ollama-and-others) for details.
 
 ## Agent Definitions
 
@@ -248,9 +262,14 @@ Response example:
 Run examples as Python modules from the project root. This keeps absolute imports like `from app...` working correctly.
 
 ```bash
+# OpenAI
 python -m app.test_gpt
 python -m app.test_gpt_agents
 python -m app.test_gpt_sandbox_agent
+
+# Local model server
+python -m app.test_gpt_local
+python -m app.test_gpt_agent_local
 ```
 
 ### `app/test_gpt.py`
@@ -275,6 +294,14 @@ writer = GPTAgent(agent_id='writer', output_type=HaikuResponse, handoffs=[evalua
 Demonstrates `GPTSandboxAgent` with local sandbox skills loaded from an agent markdown file.
 
 This example makes a real OpenAI API call and requires a valid `OPENAI_API_KEY`.
+
+### `app/test_gpt_local.py`
+
+Demonstrates `GPTLocal` using a locally running model server. Requires `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` set in `.env` and the server running before execution.
+
+### `app/test_gpt_agent_local.py`
+
+Demonstrates `GPTLocalAgent` with a writer/evaluator flow using a local model. Same flow as `test_gpt_agents.py` but routed through the local server.
 
 ## `GPTAgent` With MCP
 
@@ -364,6 +391,79 @@ For stronger evidence during testing, use one or more of these strategies:
 - Add an artificial test-only rule to a skill, such as `always return score=6`, then assert that value.
 - Inspect traces or intermediate run steps if you enable tracing for the Agents SDK.
 
+## Local Models (LM Studio, Ollama, and Others)
+
+`GPTLocal` and `GPTLocalAgent` work with any server that exposes an OpenAI-compatible REST API. No real API key is required.
+
+| Server | Default base URL | `LOCAL_API_KEY` |
+|---|---|---|
+| LM Studio | `http://localhost:1234/v1` | `lm-studio` |
+| Ollama | `http://localhost:11434/v1` | `ollama` |
+| Other | custom | any non-empty string |
+
+### `GPTLocal`
+
+Uses `chat.completions` directly. When a structured `output_type` is provided, the JSON schema is injected into the system prompt and the response is parsed automatically. Markdown code fences (` ```json ``` `) that some models add are stripped before parsing.
+
+```python
+from app.orchestration.gpt_local import GPTLocal, GPTLocalResponse
+
+# Plain text output
+agent = GPTLocal(
+    agent_id="translator",
+    output_type=GPTLocalResponse,
+)
+result = agent.run_sync("Translate: Hello, world!")
+print(result.final_output)
+
+# Structured output
+from pydantic import BaseModel
+
+class HaikuResponse(BaseModel):
+    subject: str
+    haiku: str
+    score: int
+
+writer = GPTLocal(agent_id="writer", output_type=HaikuResponse)
+result = writer.run_sync("Write a haiku about rain.")
+print(result.model_dump())
+```
+
+You can override any connection parameter at the call site:
+
+```python
+agent = GPTLocal(
+    agent_id="writer",
+    output_type=HaikuResponse,
+    base_url="http://localhost:11434/v1",
+    api_key="ollama",
+    model="llama3.2",
+)
+```
+
+### `GPTLocalAgent`
+
+Uses the Agents SDK with `OpenAIChatCompletionsModel` pointed at the local server. Supports handoffs, tools, and MCP exactly like `GPTAgent`.
+
+```python
+from app.orchestration.gpt_agent_local import GPTLocalAgent
+
+evaluator = GPTLocalAgent(agent_id="evaluator", output_type=HaikuResponse)
+writer = GPTLocalAgent(
+    agent_id="writer",
+    output_type=HaikuResponse,
+    handoffs=[evaluator],
+)
+result = writer.run_sync("Write a haiku about the changing seasons.")
+print(result.model_dump())
+```
+
+### Structured Output Compatibility
+
+`GPTLocal` instructs the model via the system prompt and parses the response with `model_validate_json`. This works with most models but depends on instruction-following quality. For reliable structured output, prefer models fine-tuned for JSON or use tool calling if the server supports it.
+
+`GPTLocalAgent` relies on the Agents SDK runner. Whether structured outputs succeed depends on the model and server capabilities.
+
 ## Sync Versus Async
 
 Every wrapper exposes an async method:
@@ -386,6 +486,7 @@ Do not call `run_sync(...)` inside an already-running event loop. In async conte
 - Add or edit skills under `app/assets/skills/<skill_name>/SKILL.md`.
 - Change the regular model with `OPENAI_MODEL_NAME` in `.env`, or set `model` in the agent markdown frontmatter.
 - Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`.
+- Change the local model server with `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` in `.env`.
 - Add handoffs by passing `handoffs=[other_agent]` at construction time.
 - Add MCP by passing `mcp_url`, `mcp_headers`, and `mcp_timeout`.
 
@@ -424,6 +525,14 @@ model: gpt-5-mini
 ### `ImportError: UnixLocalSandbox is not supported on Windows`
 
 This error should not occur with the current code, which automatically selects `DockerSandboxClient` on Windows. If you see it, ensure you are running the latest version and that Docker Desktop is running.
+
+### `Connection refused` When Using Local Models
+
+The local server is not running or is listening on a different port. Start LM Studio or Ollama and verify the base URL matches `LOCAL_BASE_URL` in your `.env`.
+
+### Local Model Returns Plain Text Instead Of JSON
+
+The model did not follow the JSON instruction in the system prompt. Try a model with stronger instruction-following capability, or add an explicit reminder in the prompt: `Respond only with valid JSON, no other text.`
 
 ### The Skill Exists, But The Output Does Not Prove It Was Used
 
