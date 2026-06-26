@@ -113,13 +113,14 @@ OPENAI_API_KEY="your-api-key"
 LOCAL_BASE_URL="http://localhost:1234/v1"
 LOCAL_MODEL_NAME="local-model"
 LOCAL_API_KEY="lm-studio"
+LOCAL_DISABLE_TRACING="true"
 ```
 
 `OPENAI_MODEL_NAME` is the default model for `GPT` and `GPTAgent`. If omitted, defaults to `gpt-4.1-mini`.
 
 `OPENAI_SANDBOX_MODEL_NAME` is used by `GPTSandboxAgent`. Sandbox agents rely on custom tool support, so a GPT-5-family model such as `gpt-5-mini` is recommended.
 
-`LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` are used by `GPTLocal` and `GPTLocalAgent`. See [Local Models](#local-models-lm-studio-ollama-and-others) for details.
+`LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` are used by `GPTLocal` and `GPTLocalAgent`. `LOCAL_DISABLE_TRACING` defaults to `true` for local agent runs so a placeholder `OPENAI_API_KEY` does not trigger tracing export warnings. See [Local Models](#local-models-lm-studio-ollama-and-others) for details.
 
 ## Agent Definitions
 
@@ -445,6 +446,8 @@ agent = GPTLocal(
 
 Uses the Agents SDK with `OpenAIChatCompletionsModel` pointed at the local server. Supports handoffs, tools, and MCP exactly like `GPTAgent`.
 
+When a Pydantic `output_type` is provided, `GPTLocalAgent` uses soft structured output: it passes the JSON schema in the instructions, runs the local server without the Chat Completions `response_format` parameter, then validates the final text with Pydantic. This avoids local OpenAI-compatible servers rejecting requests that combine tool grammar with structured output constraints.
+
 ```python
 from app.orchestration.gpt_agent_local import GPTLocalAgent
 
@@ -462,7 +465,7 @@ print(result.model_dump())
 
 `GPTLocal` instructs the model via the system prompt and parses the response with `model_validate_json`. This works with most models but depends on instruction-following quality. For reliable structured output, prefer models fine-tuned for JSON or use tool calling if the server supports it.
 
-`GPTLocalAgent` relies on the Agents SDK runner. Whether structured outputs succeed depends on the model and server capabilities.
+`GPTLocalAgent` follows the same prompt-and-parse approach for local structured output while still using the Agents SDK runner for handoffs, tools, and MCP. If the model returns non-JSON text, Pydantic validation will raise an error for custom output models.
 
 ## Sync Versus Async
 
@@ -487,6 +490,7 @@ Do not call `run_sync(...)` inside an already-running event loop. In async conte
 - Change the regular model with `OPENAI_MODEL_NAME` in `.env`, or set `model` in the agent markdown frontmatter.
 - Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`.
 - Change the local model server with `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` in `.env`.
+- Keep local tracing disabled with `LOCAL_DISABLE_TRACING="true"`, or set it to `false` when you want Agents SDK traces exported with a valid `OPENAI_API_KEY`.
 - Add handoffs by passing `handoffs=[other_agent]` at construction time.
 - Add MCP by passing `mcp_url`, `mcp_headers`, and `mcp_timeout`.
 
@@ -533,6 +537,10 @@ The local server is not running or is listening on a different port. Start LM St
 ### Local Model Returns Plain Text Instead Of JSON
 
 The model did not follow the JSON instruction in the system prompt. Try a model with stronger instruction-following capability, or add an explicit reminder in the prompt: `Respond only with valid JSON, no other text.`
+
+### `Cannot combine structured output constraints with lazy grammar`
+
+This can happen on OpenAI-compatible local servers when a request combines handoff/tool grammar with `response_format=json_schema`. `GPTLocalAgent` avoids that combination by default and validates structured output locally after the run. If you still see this error, make sure you are using the current `GPTLocalAgent` implementation and not passing a custom `response_format` through model settings.
 
 ### The Skill Exists, But The Output Does Not Prove It Was Used
 
