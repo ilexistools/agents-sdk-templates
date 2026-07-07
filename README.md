@@ -10,7 +10,7 @@ The project shows five complementary ways to call models:
 - `GPTLocal`: a wrapper that calls any OpenAI-compatible local server (LM Studio, Ollama, etc.) via `chat.completions`.
 - `GPTLocalAgent`: same as `GPTAgent` but pointed at a local server via `OpenAIChatCompletionsModel`.
 
-It also exposes a small FastAPI endpoint that writes and evaluates haiku.
+It also exposes a small FastAPI endpoint and a sample MCP tools server.
 
 ## What This Project Demonstrates
 
@@ -20,6 +20,7 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 - Sync and async execution patterns.
 - Handoffs between agents.
 - Optional MCP server integration for `GPTAgent` and `GPTSandboxAgent`.
+- A standalone MCP server with selectable `streamable-http`, `sse`, or `stdio` transport.
 - Local sandbox skills loaded from `app/assets/skills`.
 - HTTP API exposure with FastAPI.
 - Local open-source model support via any OpenAI-compatible server.
@@ -30,11 +31,6 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 .
 |-- app/
 |   |-- main.py
-|   |-- test_gpt.py
-|   |-- test_gpt_agents.py
-|   |-- test_gpt_sandbox_agent.py
-|   |-- test_gpt_local.py
-|   |-- test_gpt_agent_local.py
 |   |-- assets/
 |   |   |-- agents/
 |   |   |   |-- writer.md
@@ -42,16 +38,28 @@ It also exposes a small FastAPI endpoint that writes and evaluates haiku.
 |   |   |   |-- translator.md
 |   |   |   `-- template.md
 |   |   `-- skills/
-|   |       `-- haiku_quality/
+|   |       |-- haiku_quality/
+|   |       |   `-- SKILL.md
+|   |       `-- agent_description_writer/
 |   |           `-- SKILL.md
-|   `-- orchestration/
-|       |-- config.py
-|       |-- gpt.py
-|       |-- gpt_agent.py
-|       |-- gpt_sandbox_agent.py
-|       |-- gpt_local.py
-|       |-- gpt_agent_local.py
-|       `-- util.py
+|   |-- mcp_tools/
+|   |   |-- server.py
+|   |   `-- tools.py
+|   |-- orchestration/
+|   |   |-- config.py
+|   |   |-- gpt.py
+|   |   |-- gpt_agent.py
+|   |   |-- gpt_sandbox_agent.py
+|   |   |-- gpt_local.py
+|   |   |-- gpt_agent_local.py
+|   |   `-- util.py
+|   `-- tests/
+|       |-- test_gpt.py
+|       |-- test_gpt_agents.py
+|       |-- test_gpt_sandbox_agent.py
+|       |-- test_gpt_local.py
+|       |-- test_gpt_agent_local.py
+|       `-- test_main.py
 |-- pyproject.toml
 |-- uv.lock
 |-- env-example
@@ -71,6 +79,7 @@ Project dependencies (defined in `pyproject.toml`):
 - `pyyaml`
 - `fastapi`
 - `uvicorn`
+- `mcp[cli]`
 
 ## Setup
 
@@ -114,6 +123,9 @@ LOCAL_BASE_URL="http://localhost:1234/v1"
 LOCAL_MODEL_NAME="local-model"
 LOCAL_API_KEY="lm-studio"
 LOCAL_DISABLE_TRACING="true"
+
+# MCP server transport: streamable-http, sse, or stdio
+MCP_TRANSPORT="streamable-http"
 ```
 
 `OPENAI_MODEL_NAME` is the default model for `GPT` and `GPTAgent`. If omitted, defaults to `gpt-4.1-mini`.
@@ -121,6 +133,8 @@ LOCAL_DISABLE_TRACING="true"
 `OPENAI_SANDBOX_MODEL_NAME` is used by `GPTSandboxAgent`. Sandbox agents rely on custom tool support, so a GPT-5-family model such as `gpt-5-mini` is recommended.
 
 `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` are used by `GPTLocal` and `GPTLocalAgent`. `LOCAL_DISABLE_TRACING` defaults to `true` for local agent runs so a placeholder `OPENAI_API_KEY` does not trigger tracing export warnings. See [Local Models](#local-models-lm-studio-ollama-and-others) for details.
+
+`MCP_TRANSPORT` is used by the sample MCP server in `app/mcp_tools/server.py`. If omitted, it defaults to `streamable-http`.
 
 ## Agent Definitions
 
@@ -204,7 +218,7 @@ regular_model = default_model()   # reads OPENAI_MODEL_NAME
 sandbox_default = sandbox_model() # reads OPENAI_SANDBOX_MODEL_NAME
 ```
 
-The utility `load_agent_config` in `app/orchestration/util.py` is used internally by all three wrapper classes to load and assemble agent configuration from a markdown file:
+The utility `load_agent_config` in `app/orchestration/util.py` is used internally by wrappers that support `agent_id` to load and assemble agent configuration from a markdown file:
 
 ```python
 from app.orchestration.util import load_agent_config
@@ -238,23 +252,23 @@ http://localhost:8000
 ## API Endpoints
 
 - `GET /health`: health check.
-- `POST /haiku`: generates and evaluates a haiku for the given subject.
+- `POST /example`: accepts a JSON object under `data` and returns a sample response.
 
 Request example:
 
 ```bash
-curl -X POST http://localhost:8000/haiku \
+curl -X POST http://localhost:8000/example \
   -H "Content-Type: application/json" \
-  -d '{"subject":"the changing seasons"}'
+  -d '{"data":{"message":"hello"}}'
 ```
 
 Response example:
 
 ```json
 {
-  "subject": "the changing seasons",
-  "haiku": "Old leaves on the ground\nFirst light touches waking branches\nSpring breathes through the mist",
-  "score": 8
+  "data": {
+    "message": "This is an example response"
+  }
 }
 ```
 
@@ -264,22 +278,22 @@ Run examples as Python modules from the project root. This keeps absolute import
 
 ```bash
 # OpenAI
-python -m app.test_gpt
-python -m app.test_gpt_agents
-python -m app.test_gpt_sandbox_agent
+python -m app.tests.test_gpt
+python -m app.tests.test_gpt_agents
+python -m app.tests.test_gpt_sandbox_agent
 
 # Local model server
-python -m app.test_gpt_local
-python -m app.test_gpt_agent_local
+python -m app.tests.test_gpt_local
+python -m app.tests.test_gpt_agent_local
 ```
 
-### `app/test_gpt.py`
+### `app/tests/test_gpt.py`
 
 Demonstrates the lightweight `GPT` wrapper loaded from a markdown agent file.
 
 Use this when you want a simple Responses API call with typed parsing and do not need agent handoffs, MCP, or sandbox capabilities.
 
-### `app/test_gpt_agents.py`
+### `app/tests/test_gpt_agents.py`
 
 Demonstrates `GPTAgent` with a writer/evaluator flow using `agent_id`.
 
@@ -290,17 +304,17 @@ evaluator = GPTAgent(agent_id='evaluator', output_type=HaikuResponse)
 writer = GPTAgent(agent_id='writer', output_type=HaikuResponse, handoffs=[evaluator])
 ```
 
-### `app/test_gpt_sandbox_agent.py`
+### `app/tests/test_gpt_sandbox_agent.py`
 
 Demonstrates `GPTSandboxAgent` with local sandbox skills loaded from an agent markdown file.
 
 This example makes a real OpenAI API call and requires a valid `OPENAI_API_KEY`.
 
-### `app/test_gpt_local.py`
+### `app/tests/test_gpt_local.py`
 
 Demonstrates `GPTLocal` using a locally running model server. Requires `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` set in `.env` and the server running before execution.
 
-### `app/test_gpt_agent_local.py`
+### `app/tests/test_gpt_agent_local.py`
 
 Demonstrates `GPTLocalAgent` with a writer/evaluator flow using a local model. Same flow as `test_gpt_agents.py` but routed through the local server.
 
@@ -321,7 +335,7 @@ With MCP:
 agent = GPTAgent(
     agent_id="writer",
     output_type=HaikuResponse,
-    mcp_url="http://localhost:8001/mcp",
+    mcp_url="http://localhost:8000/mcp",
     mcp_headers={"Authorization": "Bearer token-if-needed"},
     mcp_timeout=30,
 )
@@ -330,6 +344,52 @@ result = agent.run_sync("Write a haiku using the available tools.")
 ```
 
 When `mcp_url` is omitted, `GPTAgent` calls `Runner.run(agent, prompt)` directly. When provided, it opens an `MCPServerStreamableHttp` connection for the run and assigns it to `self.mcp_servers`.
+
+## Sample MCP Server
+
+The project includes a standalone MCP server in `app/mcp_tools/server.py`.
+
+Run it from the project root:
+
+```bash
+python -m app.mcp_tools.server
+```
+
+By default, it uses `streamable-http` and listens on:
+
+```text
+http://localhost:8000/mcp
+```
+
+The sample FastAPI app also defaults to port `8000`, so run the API server or the MCP server one at a time unless you change one of their ports.
+
+You can choose the transport with a command-line argument:
+
+```bash
+python -m app.mcp_tools.server --transport streamable-http
+python -m app.mcp_tools.server --transport sse
+python -m app.mcp_tools.server --transport stdio
+```
+
+Or with the `MCP_TRANSPORT` environment variable:
+
+```bash
+MCP_TRANSPORT=sse python -m app.mcp_tools.server
+```
+
+Windows PowerShell:
+
+```powershell
+$env:MCP_TRANSPORT="sse"
+python -m app.mcp_tools.server
+```
+
+The sample server exposes two tools:
+
+- `count_text_words`: counts words and non-space characters in text.
+- `clean_text_spacing`: normalizes repeated whitespace in text.
+
+When using `streamable-http`, connect MCP clients to `http://localhost:8000/mcp`. A plain browser or `GET` request without MCP-compatible headers may return `406 Not Acceptable`; use an MCP client or a client that accepts `text/event-stream`.
 
 ## `GPTSandboxAgent` And Skills
 
@@ -341,13 +401,16 @@ The default skills directory is:
 app/assets/skills
 ```
 
-The current sample skill is:
+The current sample skills are:
 
 ```text
 app/assets/skills/haiku_quality/SKILL.md
+app/assets/skills/agent_description_writer/SKILL.md
 ```
 
-That skill gives the agent review criteria for haiku: three lines, approximate 5-7-5 syllable target, concrete imagery, restrained explanation, and strict integer scoring.
+`haiku_quality` gives the agent review criteria for haiku: three lines, approximate 5-7-5 syllable target, concrete imagery, restrained explanation, and strict integer scoring.
+
+`agent_description_writer` helps generate complete agent definition files from a user request. It follows the Markdown template expected by `load_agent_config`: YAML frontmatter plus `INPUT`, `OUTPUT`, `INSTRUCTIONS`, and `KNOWLEDGE` sections.
 
 Example:
 
@@ -491,6 +554,7 @@ Do not call `run_sync(...)` inside an already-running event loop. In async conte
 - Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`.
 - Change the local model server with `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` in `.env`.
 - Keep local tracing disabled with `LOCAL_DISABLE_TRACING="true"`, or set it to `false` when you want Agents SDK traces exported with a valid `OPENAI_API_KEY`.
+- Choose the sample MCP server transport with `MCP_TRANSPORT`, or pass `--transport` when running `app.mcp_tools.server`.
 - Add handoffs by passing `handoffs=[other_agent]` at construction time.
 - Add MCP by passing `mcp_url`, `mcp_headers`, and `mcp_timeout`.
 
@@ -501,13 +565,13 @@ Do not call `run_sync(...)` inside an already-running event loop. In async conte
 Run examples as modules from the project root:
 
 ```bash
-python -m app.test_gpt_agents
+python -m app.tests.test_gpt_agents
 ```
 
 Instead of:
 
 ```bash
-python app/test_gpt_agents.py
+python app/tests/test_gpt_agents.py
 ```
 
 ### `Invalid value: 'custom'`

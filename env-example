@@ -9,3 +9,6 @@ LOCAL_BASE_URL="http://localhost:1234/v1"
 LOCAL_MODEL_NAME="local-model"
 LOCAL_API_KEY="lm-studio"
 LOCAL_DISABLE_TRACING="true"
+
+# MCP server transport: streamable-http, sse, or stdio
+MCP_TRANSPORT="streamable-http"
