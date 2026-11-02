@@ -1,623 +1,323 @@
-# OpenAI Agents SDK Orchestration Template
+# OpenAI agents SDK templates
 
-A didactic Python template for experimenting with OpenAI orchestration patterns.
+A Python starter project for building typed model integrations, agent workflows and decision-based routing. Use OpenAI directly, connect an OpenAI-compatible local or hosted model, add tools through MCP, or experiment with sandbox execution and reusable skills.
 
-The project shows six complementary ways to call models:
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
+[![Latest tag](https://img.shields.io/github/v/tag/ilexistools/agents-sdk-templates?label=version)](https://github.com/ilexistools/agents-sdk-templates/tags)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-- `GPT`: a lightweight wrapper over the OpenAI Responses API with typed parsing.
-- `GPTDecision`: a sync/async wrapper for typed classification, predicates and rubric scores through OpenAI Decisions.
-- `GPTAgent`: a wrapper over `openai-agents` using `Agent` and `Runner.run(...)`.
-- `GPTSandboxAgent`: a sandbox-capable wrapper using `SandboxAgent`, local skills, optional MCP, and a sandbox runtime.
-- `GPTLocal`: a wrapper that calls local servers (LM Studio, Ollama, etc.) or remote providers such as DeepSeek through an OpenAI-compatible `chat.completions` API.
-- `GPTLocalAgent`: same as `GPTAgent` but pointed at a local server or compatible remote provider via `OpenAIChatCompletionsModel`.
+The template keeps orchestration visible in ordinary Python: wrappers handle model calls, Pydantic models describe outputs, Markdown files define agents, and application code controls execution. It is intended for learning, prototyping and adapting these patterns to your own application.
 
-It also exposes a small FastAPI endpoint and a sample MCP tools server.
+[Getting started](#getting-started) · [Wrapper reference](#wrapper-reference) · [Decisions](#decisions-and-routing) · [Development skills](#skills-for-coding-agents) · [Changelog](CHANGELOG.md)
 
-Coding agents can use the repository's four [development skills](docs/development-skills.md)
-to create agents, build applications, orchestrate workflows and integrate tools.
+## What you can build
 
-See the [changelog](CHANGELOG.md) for version history and compatibility notes.
+- **Typed model integrations:** extract or generate data with explicit Pydantic output contracts.
+- **Specialist workflows:** run mandatory processing stages, configure handoffs, or expose an agent as a tool.
+- **Decision-based triage:** classify requests, evaluate conditions and score inputs before selecting a specialist.
+- **Provider-compatible applications:** use OpenAI, local servers such as LM Studio and Ollama, or the DeepSeek hosted API.
+- **Tool-enabled agents:** connect Python functions and MCP servers to the Agents SDK wrappers.
+- **Sandbox experiments:** make task-specific skills available to an agent with a configured execution backend.
+- **HTTP integrations:** adapt the included FastAPI application and runnable endpoint examples.
 
-## What This Project Demonstrates
+The repository includes executable examples, offline regression tests, four skills for coding agents and focused guides for [Decisions](docs/decisions.md) and [development skills](docs/development-skills.md).
 
-- Agent orchestration structure in Python.
-- Typed outputs with Pydantic (`BaseModel`).
-- Agent definitions loaded from Markdown files via `agent_id`.
-- Sync and async execution patterns.
-- Handoffs between agents.
-- Decisions-based triage with explicit routing to specialists.
-- Optional MCP server integration for `GPTAgent` and `GPTSandboxAgent`.
-- A standalone MCP server with selectable `streamable-http`, `sse`, or `stdio` transport.
-- Local sandbox skills loaded from `app/assets/skills`.
-- HTTP API exposure with FastAPI.
-- Local open-source model support via any OpenAI-compatible server.
+## Contents
 
-## Project Structure
+- [Getting started](#getting-started)
+- [Wrapper reference](#wrapper-reference)
+- [Configuration](#configuration)
+- [Typed outputs and execution](#typed-outputs-and-execution)
+- [Markdown agent definitions](#markdown-agent-definitions)
+- [Local models and compatible providers](#local-models-and-compatible-providers)
+- [DeepSeek API](#deepseek-api)
+- [Agent orchestration](#agent-orchestration)
+- [Decisions and routing](#decisions-and-routing)
+- [Python tools and MCP](#python-tools-and-mcp)
+- [Sandbox execution and runtime skills](#sandbox-execution-and-runtime-skills)
+- [FastAPI application](#fastapi-application)
+- [Skills for coding agents](#skills-for-coding-agents)
+- [Examples and tests](#examples-and-tests)
+- [Project structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+- [Scope and compatibility](#scope-and-compatibility)
+- [Contributing](#contributing)
+- [License](#license)
 
-```text
-.
-|-- .agents/
-|   `-- skills/                 # Skills for coding agents working on this project
-|-- docs/
-|   |-- decisions.md
-|   `-- development-skills.md
-|-- app/
-|   |-- main.py
-|   |-- examples/
-|   |   `-- decisions.py
-|   |-- assets/
-|   |   |-- agents/
-|   |   |   |-- writer.md
-|   |   |   |-- evaluator.md
-|   |   |   |-- translator.md
-|   |   |   `-- template.md
-|   |   `-- skills/
-|   |       |-- haiku_quality/
-|   |       |   `-- SKILL.md
-|   |       `-- agent_description_writer/
-|   |           `-- SKILL.md
-|   |-- mcp_tools/
-|   |   |-- server.py
-|   |   `-- tools.py
-|   |-- orchestration/
-|   |   |-- config.py
-|   |   |-- gpt.py
-|   |   |-- gpt_decision.py
-|   |   |-- gpt_agent.py
-|   |   |-- gpt_sandbox_agent.py
-|   |   |-- gpt_local.py
-|   |   |-- gpt_agent_local.py
-|   |   `-- util.py
-|   `-- tests/
-|       |-- test_gpt.py
-|       |-- test_gpt_decision.py
-|       |-- test_gpt_agents.py
-|       |-- test_gpt_sandbox_agent.py
-|       |-- test_gpt_local.py
-|       |-- test_gpt_agent_local.py
-|       |-- test_mcp_server.py
-|       |-- test_skill_examples.py
-|       `-- test_main.py
-|-- pyproject.toml
-|-- uv.lock
-|-- env-example
-`-- LICENSE
-```
+## Getting started
 
-## Prerequisites
+### 1. Set up the project
 
-- Python 3.12+
-- OpenAI API key (`OPENAI_API_KEY`)
-
-Project dependencies (defined in `pyproject.toml`):
-
-- `openai>=3.42.1,<4`
-- `openai-agents>=0.24.0`
-- `python-dotenv>=1.2.4`
-- `pyyaml>=6.0.3`
-- `fastapi>=0.162.0`
-- `uvicorn>=0.54.0`
-- `mcp[cli]>=2.3.0,<3`
-
-`uv.lock` pins the resolved versions, including transitive dependencies. Use
-`uv sync --locked` to reproduce the checked-in environment.
-
-## Setup
-
-### 1. Create A Virtual Environment
-
-With [uv](https://github.com/astral-sh/uv) (recommended):
+You need Python 3.12 or later and [uv](https://docs.astral.sh/uv/). Python 3.12 is the version selected by the repository's `.python-version` file.
 
 ```bash
-uv sync
+git clone https://github.com/ilexistools/agents-sdk-templates.git
+cd agents-sdk-templates
+uv sync --locked
 ```
 
-Or with pip:
+`uv sync --locked` creates `.venv` and installs the versions recorded in `uv.lock`. The commands below use `uv run --locked`, so you do not need to activate the environment manually. Run them from the repository root.
 
-macOS/Linux:
+### 2. Check the installation without a provider key
+
+Run the offline tests:
 
 ```bash
-python -m venv venv
-source venv/bin/activate
-pip install -e .
+uv run --locked python -m unittest discover -s app/tests -v
 ```
 
-Windows PowerShell:
+Or start the sample HTTP application:
+
+```bash
+uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Open [the health endpoint](http://localhost:8000/health) or [the interactive API documentation](http://localhost:8000/docs). The default application returns sample data and does not call a model.
+
+### 3. Configure your provider
+
+Copy the environment template:
+
+**macOS / Linux**
+
+```bash
+cp env-example .env
+```
+
+**Windows PowerShell**
 
 ```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -e .
+Copy-Item env-example .env
 ```
 
-### 2. Configure Environment Variables
+For OpenAI, replace `OPENAI_API_KEY` in `.env` with your own key. For a local server or DeepSeek, configure the `LOCAL_*` settings described below. `.env` is ignored by Git.
 
-Use `env-example` as a base and create a `.env` file in the project root:
+A real OpenAI key is needed for OpenAI model calls, Decisions and the OpenAI sandbox examples. Local servers may accept placeholder keys; DeepSeek requires its own key. The offline tests and default FastAPI application do not require a provider key.
 
-```env
-OPENAI_MODEL_NAME="gpt-4.1-mini"
-OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
-OPENAI_DECISION_MODEL_NAME="gpt-6-luna"
-OPENAI_API_KEY="your-api-key"
+### 4. Make your first typed model call
 
-# Local model server (LM Studio, Ollama, etc.)
-LOCAL_BASE_URL="http://localhost:1234/v1"
-LOCAL_MODEL_NAME="local-model"
-LOCAL_API_KEY="lm-studio"
-LOCAL_DISABLE_TRACING="true"
-
-# MCP server transport: streamable-http, sse, or stdio
-MCP_TRANSPORT="streamable-http"
-```
-
-`OPENAI_MODEL_NAME` is the default model for `GPT` and `GPTAgent`. If omitted, defaults to `gpt-4.1-mini`.
-
-`OPENAI_DECISION_MODEL_NAME` configures `GPTDecision` independently and defaults
-to `gpt-6-luna`. See [Decisions and routing](docs/decisions.md) for usage and limits.
-
-`OPENAI_SANDBOX_MODEL_NAME` is used by `GPTSandboxAgent`. Sandbox agents rely on custom tool support, so a GPT-5-family model such as `gpt-5-mini` is recommended.
-
-`LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` are used by `GPTLocal` and `GPTLocalAgent`. `LOCAL_DISABLE_TRACING` defaults to `true` for local agent runs so a placeholder `OPENAI_API_KEY` does not trigger tracing export warnings. See [Local Models](#local-models-lm-studio-ollama-and-others) for details.
-
-`MCP_TRANSPORT` is used by the sample MCP server in `app/mcp_tools/server.py`. If omitted, it defaults to `streamable-http`.
-
-## Skills for development
-
-The repository includes four coding-agent skills under `.agents/skills/`:
-
-| Skill | Purpose |
-|---|---|
-| `agents-template-criar-agente` | Agent Markdown definitions, output contracts and loading examples |
-| `agents-template-criar-aplicacao` | Python features and FastAPI endpoints using OpenAI, local servers or DeepSeek |
-| `agents-template-orquestrar-agentes` | Sequential workflows, handoffs and specialists as tools |
-| `agents-template-integrar-ferramentas` | Python tools, MCP 2 and sandbox configuration |
-
-For example, ask your coding agent:
-
-```text
-Use $agents-template-criar-aplicacao to build a classification endpoint using DeepSeek.
-```
-
-These development skills guide the coding agent. Runtime skills used by
-`GPTSandboxAgent` remain under `app/assets/skills/`. See the
-[development skills guide](docs/development-skills.md) for discovery, all
-invocation examples, bundled assets, validation commands and maintenance.
-
-## Agent Definitions
-
-Agents are defined as Markdown files under `app/assets/agents/`. Each file has a YAML frontmatter block followed by named sections.
-
-Example — `app/assets/agents/writer.md`:
-
-```markdown
----
-id: writer
-role: Haiku Writer
-goal: Write short, evocative haiku poems based on a theme provided by the user.
-backstory: You are a skilled haiku writer with a deep sensitivity to nature and everyday moments.
-max_tokens: 256
-model: gpt-4.1-mini
----
-
-# INPUT
-A theme, image, or feeling to inspire the haiku.
-
-# OUTPUT
-class HaikuResponse(BaseModel):
-    subject: str
-    haiku: str
-    score: int
-
-# INSTRUCTIONS
-- Write one haiku based on the user's input.
-...
-
-# KNOWLEDGE
-How to write haiku...
-```
-
-### Frontmatter Fields
-
-| Field | Description |
-|---|---|
-| `id` | Identifier used as `agent_id` when loading |
-| `role` | System role prepended to instructions |
-| `goal` | Primary objective of the agent |
-| `backstory` | Background context for the agent |
-| `model` | Model override (falls back to `OPENAI_MODEL_NAME`) |
-| `max_tokens` | Maximum output tokens (default: 2048) |
-
-### Loading An Agent By ID
-
-Pass `agent_id` to an agent-definition wrapper (`GPT`, `GPTAgent`,
-`GPTSandboxAgent`, `GPTLocal` or `GPTLocalAgent`) to load configuration from the
-Markdown file. `GPTDecision` takes questions directly and does not use `agent_id`:
+Save this as `app/examples/quickstart.py`:
 
 ```python
-from app.orchestration.gpt_agent import GPTAgent
+from pydantic import BaseModel
+from app.orchestration.gpt import GPT
 
-agent = GPTAgent(agent_id="writer", output_type=HaikuResponse)
-result = agent.run_sync("Write a haiku about autumn.")
-```
+class SummaryResponse(BaseModel):
+    summary: str
+    key_points: list[str]
 
-The agent name, role, instructions, model, and token limit are all read from the file. You can still override individual fields at the call site — for example, `output_type`, `tools`, `handoffs`, or `mcp_url`.
-
-### Loading Manually (without `agent_id`)
-
-You can still configure agents fully in code by omitting `agent_id`:
-
-```python
-agent = GPTAgent(
-    name="Haiku Agent",
-    role="You are a helpful assistant that writes haikus.",
-    instructions="Write one haiku per request.",
-    output_type=HaikuResponse,
-    model="gpt-4.1-mini",
+model = GPT(
+    instructions="Summarize the supplied text clearly and identify its key points.",
+    output_type=SummaryResponse,
 )
+result = model.run_sync(
+    "The team completed the prototype. User testing starts next week. "
+    "The remaining task is to document the integration."
+)
+print(result.model_dump_json(indent=2))
 ```
 
-## Configuration Helpers
+Run it with your OpenAI key configured:
 
-Shared environment and model logic lives in `app/orchestration/config.py`.
+```bash
+uv run --locked python -m app.examples.quickstart
+```
+
+This makes a real API call. The generated output follows your Python contract; its contents depend on the model.
+
+## Wrapper reference
+
+Import wrappers from their modules under `app.orchestration`.
+
+| Wrapper | Import module | Use it for | Return value |
+|---|---|---|---|
+| `GPT` | `gpt` | Direct OpenAI Responses API calls with typed parsing | Parsed output object |
+| `GPTAgent` | `gpt_agent` | Agents SDK execution, Python tools, handoffs and MCP | Final agent output |
+| `GPTSandboxAgent` | `gpt_sandbox_agent` | Agent execution with a sandbox backend and runtime skills | Final agent output |
+| `GPTLocal` | `gpt_local` | Direct Chat Completions calls to a compatible local or remote server | Parsed output, with a text-response fallback |
+| `GPTLocalAgent` | `gpt_agent_local` | Agents SDK workflows using a compatible Chat Completions provider | Final output parsed by the wrapper |
+| `GPTDecision` | `gpt_decision` | Predicates, fixed-choice classification and rubric scoring | Complete SDK `Decision` object |
+
+All wrappers expose `run_sync(...)` and async `run(...)`. `GPTDecision` additionally requires `questions=...` and uses a different response contract.
+
+`GPTAgent`, `GPTLocalAgent` and `GPTSandboxAgent` support tools, handoffs and MCP. `GPT` and `GPTLocal` are direct-call wrappers. The existing constructors do not expose every SDK option: several accept `**kwargs` without forwarding unknown fields. Check the relevant module before using an advanced option.
+
+## Configuration
+
+Use [env-example](env-example) as the source for a complete configuration. These values are the repository's defaults, not recommendations for every workload.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | No usable key supplied | Authentication for OpenAI API calls |
+| `OPENAI_MODEL_NAME` | `gpt-4.1-mini` | Fallback model for `GPT` and `GPTAgent` |
+| `OPENAI_SANDBOX_MODEL_NAME` | `gpt-5-mini` | Fallback model for `GPTSandboxAgent` |
+| `OPENAI_DECISION_MODEL_NAME` | `gpt-6-luna` | Independent model setting for `GPTDecision` |
+| `LOCAL_BASE_URL` | `http://localhost:1234/v1` | Compatible Chat Completions endpoint |
+| `LOCAL_MODEL_NAME` | `local-model` | Model identifier accepted by that server |
+| `LOCAL_API_KEY` | `lm-studio` | Local placeholder or the remote provider's real key |
+| `LOCAL_DISABLE_TRACING` | `true` | Disable Agents SDK tracing when constructing `GPTLocalAgent` |
+| `MCP_TRANSPORT` | `streamable-http` | Default transport for the sample MCP server |
+
+Configuration helpers live in [app/orchestration/config.py](app/orchestration/config.py):
 
 ```python
 from app.orchestration.config import default_model, sandbox_model, decision_model
 
-regular_model = default_model()   # reads OPENAI_MODEL_NAME
-sandbox_default = sandbox_model() # reads OPENAI_SANDBOX_MODEL_NAME
-decisions_default = decision_model() # reads OPENAI_DECISION_MODEL_NAME
+regular_model = default_model()
+sandbox_default = sandbox_model()
+decisions_default = decision_model()
 ```
 
-The utility `load_agent_config` in `app/orchestration/util.py` is used internally by wrappers that support `agent_id` to load and assemble agent configuration from a markdown file:
+Model availability depends on the provider and account. If a configured model is unavailable, select an available model with the capabilities your workflow requires.
+
+### Configuration precedence
+
+For `GPT`, `GPTAgent`, `GPTSandboxAgent`, `GPTLocal` and `GPTLocalAgent`:
+
+- **Without `agent_id`:** constructor settings such as `model` and `max_tokens` are used; omitted models fall back to the corresponding environment setting.
+- **With `agent_id`:** the Markdown definition supplies the name, role, instructions, model and token limit. Constructor `model` and `max_tokens` arguments do not replace those fields.
+- **Markdown model omitted or empty:** the wrapper uses its provider-specific fallback. This is useful when sharing a definition across environments.
+
+`output_type`, `tools`, `handoffs` and MCP settings can still be supplied where the selected wrapper supports them. `GPTDecision` does not load Markdown definitions: its constructor `model` overrides `OPENAI_DECISION_MODEL_NAME`, and questions are passed directly.
+
+## Typed outputs and execution
+
+Define a Pydantic `BaseModel` and pass it as `output_type`. A schema described only in a prompt or Markdown section does not create the corresponding Python model.
+
+The default agent response contains `final_output: str`. When you supply a custom model, use that model's fields. The agent wrappers return the final content directly, rather than the Agents SDK's `RunResult`.
+
+### Asynchronous applications
+
+Inside FastAPI endpoints or another active event loop, use `await`:
 
 ```python
-from app.orchestration.util import load_agent_config
+from app.orchestration.gpt_agent import GPTAgent
 
-config = load_agent_config("writer", fallback_model=default_model())
-# config keys: name, role, instructions, model, max_tokens
+agent = GPTAgent(instructions="Answer clearly and concisely.")
+
+async def answer_question(question: str) -> str:
+    result = await agent.run(question)
+    return result.final_output
 ```
 
-The lower-level `load_agent_markdown` returns the raw parsed dict with `metadata` and `sections` if you need direct access to the file structure.
+The agent wrappers reject `run_sync()` inside an active event loop. Direct-call wrappers use blocking synchronous clients, so async applications should use their async methods as well.
 
-## Running The API
+### Structured output with compatible providers
 
-From the project root:
+`GPTLocal` and `GPTLocalAgent` put the output schema into instructions and validate the returned text with Pydantic. They do not guarantee server-enforced JSON Schema output.
 
-```bash
-python -m app.main
+For a custom output model, invalid JSON can raise a validation error in `GPTLocalAgent`. `GPTLocal` can fall back to `GPTLocalResponse`; applications requiring a specific custom type should check the returned type before using its fields. Both wrappers handle common Markdown code fences in model output.
+
+## Markdown agent definitions
+
+Application agents live in [app/assets/agents](app/assets/agents). Each definition contains YAML frontmatter and four conventional sections: `INPUT`, `OUTPUT`, `INSTRUCTIONS` and `KNOWLEDGE`.
+
+For example, save this as `app/assets/agents/document_reviewer.md`:
+
+```markdown
+---
+id: document_reviewer
+role: Document reviewer
+goal: Identify clarity and consistency issues in the supplied document.
+backstory: Use only the supplied text and distinguish missing evidence from facts.
+max_tokens: 2048
+---
+
+# INPUT
+The document text and optional context about its intended audience.
+
+# OUTPUT
+A JSON object with summary (string) and issues (list of strings).
+
+# INSTRUCTIONS
+- Summarize the document in English.
+- Identify internal contradictions, ambiguous wording and missing information.
+- Do not introduce external facts.
+- Return only the requested JSON object.
+
+# KNOWLEDGE
+Each issue should identify a concrete passage or information gap.
 ```
 
-Or with auto-reload:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-The API runs at:
-
-```text
-http://localhost:8000
-```
-
-## API Endpoints
-
-- `GET /health`: health check.
-- `POST /example`: accepts a JSON object under `data` and returns a sample response.
-
-Request example:
-
-```bash
-curl -X POST http://localhost:8000/example \
-  -H "Content-Type: application/json" \
-  -d '{"data":{"message":"hello"}}'
-```
-
-Response example:
-
-```json
-{
-  "data": {
-    "message": "This is an example response"
-  }
-}
-```
-
-## Local Examples
-
-Run examples as Python modules from the project root. This keeps absolute imports like `from app...` working correctly.
-
-```bash
-# OpenAI
-python -m app.tests.test_gpt
-python -m app.tests.test_gpt_agents
-python -m app.tests.test_gpt_sandbox_agent
-
-# Local model server
-python -m app.tests.test_gpt_local
-python -m app.tests.test_gpt_agent_local
-```
-
-### `app/tests/test_gpt.py`
-
-Demonstrates the lightweight `GPT` wrapper loaded from a markdown agent file.
-
-Use this when you want a simple Responses API call with typed parsing and do not need agent handoffs, MCP, or sandbox capabilities.
-
-### `app/tests/test_gpt_agents.py`
-
-Demonstrates `GPTAgent` with a writer/evaluator flow using `agent_id`.
-
-Both agents are loaded from their respective markdown files. The writer agent creates the haiku; the evaluator is passed as a handoff target. Both receive a custom `output_type` at construction:
+The definition omits `model`, allowing the wrapper to use its configured fallback. Load it with a matching Python output contract:
 
 ```python
-evaluator = GPTAgent(agent_id='evaluator', output_type=HaikuResponse)
-writer = GPTAgent(agent_id='writer', output_type=HaikuResponse, handoffs=[evaluator])
-```
-
-### `app/tests/test_gpt_sandbox_agent.py`
-
-Demonstrates `GPTSandboxAgent` with local sandbox skills loaded from an agent markdown file.
-
-This example makes a real OpenAI API call and requires a valid `OPENAI_API_KEY`.
-
-### `app/tests/test_gpt_local.py`
-
-Demonstrates `GPTLocal` using a locally running model server. Requires `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` set in `.env` and the server running before execution.
-
-### `app/tests/test_gpt_agent_local.py`
-
-Demonstrates `GPTLocalAgent` with a writer/evaluator flow using a local model. Same flow as `test_gpt_agents.py` but routed through the local server.
-
-## Decisions and routing
-
-Use `GPTDecision` when you need a condition probability, a category from a fixed
-set or a score against an ordered rubric. It returns the SDK `Decision` object,
-including typed answers, refusals and token usage. The application can then
-route a request to a specialist using an explicit mapping.
-
-Run the grouped-question example with an OpenAI key configured:
-
-```bash
-uv run --locked python -m app.examples.decisions --mode evaluate
-```
-
-For routing, supply a calibrated confidence threshold explicitly. The example
-returns `review_required` for refused, uncertain or unmapped answers without
-executing a specialist. See the [complete Decisions guide](docs/decisions.md)
-for sync/async calls, configuration, routing examples and offline tests.
-
-## `GPTAgent` With MCP
-
-`GPTAgent` can run with or without an MCP server.
-
-Without MCP:
-
-```python
-agent = GPTAgent(agent_id="writer", output_type=HaikuResponse)
-result = agent.run_sync("Write a haiku about the changing seasons.")
-```
-
-With MCP:
-
-```python
-agent = GPTAgent(
-    agent_id="writer",
-    output_type=HaikuResponse,
-    mcp_url="http://localhost:8000/mcp",
-    mcp_headers={"Authorization": "Bearer token-if-needed"},
-    mcp_timeout=30,
-)
-
-result = agent.run_sync("Write a haiku using the available tools.")
-```
-
-When `mcp_url` is omitted, `GPTAgent` calls `Runner.run(agent, prompt)` directly. When provided, it opens an `MCPServerStreamableHttp` connection for the run and assigns it to `self.mcp_servers`.
-
-## Sample MCP Server
-
-The project includes a standalone MCP server in `app/mcp_tools/server.py`.
-
-It uses MCP SDK 2's `MCPServer`. HTTP host, port, path, and response settings
-are passed to `run()` for the selected transport; `stdio` needs no HTTP settings.
-
-Run the offline MCP regression checks (no API key required):
-
-```bash
-uv run --locked python -m unittest app.tests.test_mcp_server -v
-```
-
-These check transport options, HTTP tool calls, and the Agents SDK's stdio integration.
-
-Run it from the project root:
-
-```bash
-python -m app.mcp_tools.server
-```
-
-By default, it uses `streamable-http` and listens on:
-
-```text
-http://localhost:8000/mcp
-```
-
-The sample FastAPI app also defaults to port `8000`, so run the API server or the MCP server one at a time unless you change one of their ports.
-
-You can choose the transport with a command-line argument:
-
-```bash
-python -m app.mcp_tools.server --transport streamable-http
-python -m app.mcp_tools.server --transport sse
-python -m app.mcp_tools.server --transport stdio
-```
-
-Or with the `MCP_TRANSPORT` environment variable:
-
-```bash
-MCP_TRANSPORT=sse python -m app.mcp_tools.server
-```
-
-Windows PowerShell:
-
-```powershell
-$env:MCP_TRANSPORT="sse"
-python -m app.mcp_tools.server
-```
-
-The sample server exposes two tools:
-
-- `count_text_words`: counts words and non-space characters in text.
-- `clean_text_spacing`: normalizes repeated whitespace in text.
-
-When using `streamable-http`, connect MCP clients to `http://localhost:8000/mcp`. A plain browser or `GET` request without MCP-compatible headers may return `406 Not Acceptable`; use an MCP client or a client that accepts `text/event-stream`.
-
-## `GPTSandboxAgent` And Skills
-
-`GPTSandboxAgent` extends the regular agent pattern with sandbox capabilities and local skills.
-
-The default skills directory is:
-
-```text
-app/assets/skills
-```
-
-The current sample skills are:
-
-```text
-app/assets/skills/haiku_quality/SKILL.md
-app/assets/skills/agent_description_writer/SKILL.md
-```
-
-`haiku_quality` gives the agent review criteria for haiku: three lines, approximate 5-7-5 syllable target, concrete imagery, restrained explanation, and strict integer scoring.
-
-`agent_description_writer` helps generate complete agent definition files from a user request. It follows the Markdown template expected by `load_agent_config`: YAML frontmatter plus `INPUT`, `OUTPUT`, `INSTRUCTIONS`, and `KNOWLEDGE` sections.
-
-Example:
-
-```python
-writer = GPTSandboxAgent(agent_id="writer", output_type=HaikuResponse)
-result = writer.run_sync("Write a haiku about the changing seasons.")
-```
-
-You can override the skills directory:
-
-```python
-writer = GPTSandboxAgent(
-    agent_id="writer",
-    output_type=HaikuResponse,
-    skills_dir="app/assets/skills",
-)
-```
-
-The wrapper resolves project-relative paths to `app/assets/skills` when possible.
-
-### Sandbox Backend
-
-On macOS/Linux, `GPTSandboxAgent` uses `UnixLocalSandboxClient` by default. On Windows, it falls back to `DockerSandboxClient` (requires Docker Desktop and the `docker` Python package). You can also pass a custom client:
-
-```python
-from agents.sandbox.sandboxes.docker import DockerSandboxClient
-
-writer = GPTSandboxAgent(
-    agent_id="writer",
-    output_type=HaikuResponse,
-    sandbox_client=DockerSandboxClient(),
-)
-```
-
-## How To Know A Skill Is Being Used
-
-Loading a skill directory makes the skill available to the sandbox agent at the `.agents/` path inside the workspace. It does not automatically prove that the model used the skill in a particular response.
-
-For stronger evidence during testing, use one or more of these strategies:
-
-- Mention the skill explicitly in the prompt: `Use the Haiku Quality skill.`
-- Add an artificial test-only rule to a skill, such as `always return score=6`, then assert that value.
-- Inspect traces or intermediate run steps if you enable tracing for the Agents SDK.
-
-## Local Models (LM Studio, Ollama, and Others)
-
-`GPTLocal` and `GPTLocalAgent` connect to servers that expose an OpenAI-compatible Chat Completions API. Local servers such as LM Studio and Ollama typically accept a placeholder API key; authenticated servers require their own key. These wrappers also accept remote providers; see [DeepSeek API](#deepseek-api).
-
-| Server | Default base URL | `LOCAL_API_KEY` |
-|---|---|---|
-| LM Studio | `http://localhost:1234/v1` | `lm-studio` |
-| Ollama | `http://localhost:11434/v1` | `ollama` |
-| Other | custom | server-specific key, or a placeholder if authentication is disabled |
-
-### `GPTLocal`
-
-Uses `chat.completions` directly. When a structured `output_type` is provided, the JSON schema is injected into the system prompt and the response is parsed automatically. Markdown code fences (` ```json ``` `) that some models add are stripped before parsing.
-
-```python
-from app.orchestration.gpt_local import GPTLocal, GPTLocalResponse
-
-# Plain text output
-agent = GPTLocal(
-    agent_id="translator",
-    output_type=GPTLocalResponse,
-)
-result = agent.run_sync("Translate: Hello, world!")
-print(result.final_output)
-
-# Structured output
 from pydantic import BaseModel
+from app.orchestration.gpt_agent import GPTAgent
 
-class HaikuResponse(BaseModel):
-    subject: str
-    haiku: str
-    score: int
+class ReviewResponse(BaseModel):
+    summary: str
+    issues: list[str]
 
-writer = GPTLocal(agent_id="writer", output_type=HaikuResponse)
-result = writer.run_sync("Write a haiku about rain.")
+reviewer = GPTAgent(agent_id="document_reviewer", output_type=ReviewResponse)
+result = reviewer.run_sync("The launch is scheduled for Monday. The date is still undecided.")
 print(result.model_dump())
 ```
 
-You can override any connection parameter at the call site:
+### Definition fields and loader behavior
+
+| Field | Meaning |
+|---|---|
+| `id` | Keep it equal to the filename without `.md`; file lookup uses the filename |
+| `name` | Optional display name; defaults to the requested `agent_id` |
+| `role` | Prepended to the assembled instructions by the wrapper |
+| `goal` | Objective included in the assembled instructions |
+| `backstory` | Optional behavior-shaping context included in the instructions |
+| `model` | Model override; omit it to use the wrapper's fallback |
+| `max_tokens` | Output budget; defaults to 2048 when omitted |
+
+Do not leave `max_tokens:` blank: the loader converts the field with `int(...)`. Avoid additional level-one Markdown headings inside the four sections, because the loader treats them as section boundaries.
+
+For lower-level access, use `load_agent_config(agent_id, fallback_model=...)` or `load_agent_markdown(agent_id)` from [app/orchestration/util.py](app/orchestration/util.py). The latter exposes raw `metadata` and `sections`.
+
+The coding-agent skill includes an offline definition validator:
+
+```bash
+uv run --locked python .agents/skills/agents-template-criar-agente/scripts/validar_agente.py app/assets/agents/document_reviewer.md
+```
+
+The validator checks authoring conventions and actual loading. It does not evaluate the quality of model responses.
+
+## Local models and compatible providers
+
+The `Local` wrappers accept a compatible hosted endpoint as well as a local server. Support depends on the provider's implementation of Chat Completions, output formatting and tools.
+
+| Server or provider | Base URL | Key |
+|---|---|---|
+| LM Studio | `http://localhost:1234/v1` | Placeholder if authentication is disabled |
+| Ollama | `http://localhost:11434/v1` | Placeholder if authentication is disabled |
+| DeepSeek | `https://api.deepseek.com` | Real DeepSeek API key |
+| Another compatible server | Its documented API base URL | As required by that server |
+
+Configure `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME` and `LOCAL_API_KEY` in `.env`, then use:
 
 ```python
-agent = GPTLocal(
-    agent_id="writer",
-    output_type=HaikuResponse,
+from app.orchestration.gpt_local import GPTLocal
+
+model = GPTLocal(instructions="Answer in Brazilian Portuguese.")
+result = model.run_sync("Explain machine learning in two sentences.")
+print(result.final_output)
+```
+
+Connection parameters can also be passed directly:
+
+```python
+from app.orchestration.gpt_local import GPTLocal
+
+model = GPTLocal(
     base_url="http://localhost:11434/v1",
     api_key="ollama",
-    model="llama3.2",
+    model="your-installed-model",
 )
 ```
 
-### `GPTLocalAgent`
+Replace the model identifier with one actually installed on your server. These examples omit `agent_id` so the local model setting is used. Bundled definitions such as `writer.md` currently specify OpenAI models; edit or omit their `model` field before using them with another provider.
 
-Uses the Agents SDK with `OpenAIChatCompletionsModel` pointed at the local server. Supports handoffs, tools, and MCP exactly like `GPTAgent`.
-
-When a Pydantic `output_type` is provided, `GPTLocalAgent` uses soft structured output: it passes the JSON schema in the instructions, runs the local server without the Chat Completions `response_format` parameter, then validates the final text with Pydantic. This avoids local OpenAI-compatible servers rejecting requests that combine tool grammar with structured output constraints.
-
-```python
-from app.orchestration.gpt_agent_local import GPTLocalAgent
-
-evaluator = GPTLocalAgent(agent_id="evaluator", output_type=HaikuResponse)
-writer = GPTLocalAgent(
-    agent_id="writer",
-    output_type=HaikuResponse,
-    handoffs=[evaluator],
-)
-result = writer.run_sync("Write a haiku about the changing seasons.")
-print(result.model_dump())
-```
-
-### Structured Output Compatibility
-
-`GPTLocal` instructs the model via the system prompt and parses the response with `model_validate_json`. This works with most models but depends on instruction-following quality. For reliable structured output, prefer models fine-tuned for JSON or use tool calling if the server supports it.
-
-`GPTLocalAgent` follows the same prompt-and-parse approach for local structured output while still using the Agents SDK runner for handoffs, tools, and MCP. If the model returns non-JSON text, Pydantic validation will raise an error for custom output models.
+For Agents SDK workflows, import `GPTLocalAgent` from `app.orchestration.gpt_agent_local`. Its tracing switch affects the global Agents SDK tracing configuration; account for that when mixing providers in one process.
 
 ## DeepSeek API
 
-Despite their names, `GPTLocal` and `GPTLocalAgent` can connect to DeepSeek's
-hosted API using a DeepSeek API key. No additional library is required: DeepSeek
-supports the OpenAI SDK's Chat Completions interface. See the
-[official DeepSeek quickstart](https://api-docs.deepseek.com/guides/harness).
-
-Set these values in your `.env` file, replacing the placeholder with your
-DeepSeek API key:
+The existing Chat Completions wrappers can use a DeepSeek key without an additional library. Configure the same `LOCAL_*` variables:
 
 ```dotenv
 LOCAL_BASE_URL="https://api.deepseek.com"
@@ -626,22 +326,9 @@ LOCAL_API_KEY="your-deepseek-api-key"
 LOCAL_DISABLE_TRACING="true"
 ```
 
-The `LOCAL_*` names are the configuration variables already used by these
-wrappers, including for remote endpoints. `LOCAL_API_KEY` must contain the real
-DeepSeek key. An OpenAI API key is not required for these examples while tracing
-is disabled. Keep the key in your local environment rather than in source code.
+The model identifier above is an example; consult the [DeepSeek documentation](https://api-docs.deepseek.com/guides/harness) for available models and provider-specific behavior.
 
-For a direct model call, run from the project root:
-
-```python
-from app.orchestration.gpt_local import GPTLocal
-
-model = GPTLocal()
-result = model.run_sync("Explain machine learning in Portuguese.")
-print(result.final_output)
-```
-
-For an agent using the Agents SDK:
+For a direct call, use `GPTLocal` as in the preceding section. For an agent:
 
 ```python
 from app.orchestration.gpt_agent_local import GPTLocalAgent
@@ -654,104 +341,390 @@ result = agent.run_sync("Explain machine learning.")
 print(result.final_output)
 ```
 
-Both examples use `LOCAL_MODEL_NAME`. You can also pass `base_url`, `api_key`,
-and `model` explicitly when constructing either wrapper without `agent_id`.
-When using `agent_id`, the Markdown frontmatter's `model` takes precedence over
-`LOCAL_MODEL_NAME` and the constructor's `model`; set that frontmatter to a
-DeepSeek model or omit it to use `LOCAL_MODEL_NAME`.
+With tracing disabled, these paths do not need an OpenAI key. The wrappers read `LOCAL_API_KEY`; they do not automatically read `DEEPSEEK_API_KEY`.
 
-These wrappers request structured output through prompt instructions and parse
-the result with Pydantic. JSON output, tool calls, MCP, handoffs, and reasoning
-mode require validation with the selected DeepSeek model; API compatibility
-does not guarantee identical behavior across providers. In particular, tool
-calls in thinking mode may require provider-specific handling of reasoning
-content. This configuration has been checked against the project code and
-provider documentation, but has not been validated with a live DeepSeek call.
+Tool calls, MCP, handoffs and reasoning behavior must be checked with the selected DeepSeek model. In particular, tool conversations in thinking mode may require provider-specific handling of reasoning content. The project documents the compatible connection path; live DeepSeek behavior has not been validated by the offline tests. This configuration does not imply DeepSeek support for OpenAI Decisions or the sandbox runtime.
 
-## Sync Versus Async
 
-Every wrapper exposes an async method:
+## Agent orchestration
 
-```python
-result = await agent.run(prompt)
-```
+### Mandatory processing stages
 
-And a sync convenience method:
+When every stage must execute in a known order, orchestrate the calls in Python and validate each intermediate result. Serialize Pydantic output with `model_dump_json()` before passing it to the next agent.
+
+The [sequential workflow example](.agents/skills/agents-template-orquestrar-agentes/assets/fluxo_sequencial.py) demonstrates extraction followed by review, with injectable agents for testing and explicit failure propagation.
+
+### Model-selected handoffs
+
+A handoff allows an agent to transfer control to a specialist:
 
 ```python
-result = agent.run_sync(prompt)
+from app.orchestration.gpt_agent import GPTAgent
+
+reviewer = GPTAgent(
+    name="Reviewer",
+    instructions="Review the supplied text and identify clarity issues.",
+)
+coordinator = GPTAgent(
+    name="Coordinator",
+    instructions="Delegate document-review requests to Reviewer.",
+    handoffs=[reviewer],
+)
+result = coordinator.run_sync("Review this sentence: the date is final but still undecided.")
+print(result.final_output)
 ```
 
-In async contexts such as FastAPI endpoints, use `await agent.run(...)`.
-The agent wrappers reject `run_sync(...)` inside an active event loop; the
-direct API wrappers use blocking synchronous clients. `GPTDecision` additionally
-requires `questions=...` in both methods and returns the complete SDK `Decision`.
+This makes a handoff available to the model; it does not guarantee that every request passes through the reviewer. Use a mandatory Python sequence when review is required on every execution.
 
-## Customization
+For consultation where the coordinator should retain control, an `Agent`-based specialist can be exposed with `specialist.as_tool(...)`. See the [orchestration patterns](.agents/skills/agents-template-orquestrar-agentes/references/padroes.md) for examples and contract considerations.
 
-- Add or edit agent definitions under `app/assets/agents/<id>.md`.
-- Add or edit skills under `app/assets/skills/<skill_name>/SKILL.md`.
-- Change the regular model with `OPENAI_MODEL_NAME` in `.env`, or set `model` in the agent markdown frontmatter.
-- Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`.
-- Configure Decisions separately with `OPENAI_DECISION_MODEL_NAME`; use `GPTDecision(model=...)` for an explicit override.
-- Change the local model server or compatible remote provider (such as DeepSeek) with `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` in `.env`.
-- Keep local tracing disabled with `LOCAL_DISABLE_TRACING="true"`, or set it to `false` when you want Agents SDK traces exported with a valid `OPENAI_API_KEY`.
-- Choose the sample MCP server transport with `MCP_TRANSPORT`, or pass `--transport` when running `app.mcp_tools.server`.
-- Add handoffs by passing `handoffs=[other_agent]` at construction time.
-- Add MCP by passing `mcp_url`, `mcp_headers`, and `mcp_timeout`.
+Do not share a wrapper instance across concurrent executions that open connections through `mcp_url`: that path mutates `self.mcp_servers`. Use separate instances or manage connection ownership explicitly.
+
+## Decisions and routing
+
+`GPTDecision` uses a separate API contract for decisions with fixed answer types:
+
+| Question type | Result | Example use |
+|---|---|---|
+| `predicate` | Estimated probability of a condition | Detect an explicit refund request |
+| `choice` | One supplied category, with probabilities and confidence | Choose the responsible department |
+| `score` | A score over ordered rubric levels | Assess the operational impact of a request |
+
+The wrapper returns the full SDK `Decision`, including `answers`, `model` and `usage`. A question can return a refusal. Questions need unique, non-empty names, and a request accepts 1–400 questions.
+
+Evaluate the bundled questions:
+
+```bash
+uv run --locked python -m app.examples.decisions --mode evaluate --text "I was charged twice. Please refund the duplicate charge."
+```
+
+Route a request to a configured specialist:
+
+```bash
+uv run --locked python -m app.examples.decisions --mode route --min-confidence 0.8 --text "The login page fails with an error."
+```
+
+The threshold `0.8` is illustrative. Calibrate your own value with representative labeled examples. The routing example requires an explicit threshold and returns `review_required` for a refusal, insufficient confidence, an unhandled category or an unusable answer. Only a mapped qualifying choice executes a specialist.
+
+These commands make real OpenAI calls. See [Decisions and specialist routing](docs/decisions.md) for sync/async usage, injected clients, structured evidence, request options, result contracts and offline tests. Check [the official API guide](https://developers.openai.com/api/docs/guides/decisions) for current provider capabilities.
+
+## Python tools and MCP
+
+### Expose a Python function
+
+Use the Agents SDK's `function_tool` decorator and pass the resulting tool to an agent wrapper:
+
+```python
+from agents import function_tool
+from app.orchestration.gpt_agent import GPTAgent
+
+@function_tool
+def count_words(text: str) -> int:
+    """Count whitespace-separated words in the supplied text."""
+    return len(text.split())
+
+agent = GPTAgent(
+    instructions="Use the tool when asked to count words.",
+    tools=[count_words],
+)
+result = agent.run_sync("How many words are in: a short example sentence?")
+print(result.final_output)
+```
+
+Parameter annotations and docstrings describe the tool's contract. Keep business logic independently testable when the tool has more than a trivial implementation. The [Python tool example](.agents/skills/agents-template-integrar-ferramentas/assets/ferramenta_texto.py) demonstrates a pure function and its SDK adapter.
+
+### Start the sample MCP server
+
+The server uses MCP SDK 2's `MCPServer` and exposes two tools:
+
+| Tool | Behavior |
+|---|---|
+| `count_text_words` | Counts whitespace-separated words and the sum of their character lengths |
+| `clean_text_spacing` | Collapses repeated whitespace into single spaces |
+
+Start it from the repository root:
+
+```bash
+uv run --locked python -m app.mcp_tools.server --transport streamable-http
+```
+
+The streamable HTTP endpoint is `http://localhost:8000/mcp`. Other transport options are:
+
+```bash
+uv run --locked python -m app.mcp_tools.server --transport sse
+uv run --locked python -m app.mcp_tools.server --transport stdio
+```
+
+The SSE endpoint is `/sse`; stdio communicates through the process streams. The HTTP transports bind to `0.0.0.0:8000` in the example code. The default FastAPI server also uses port 8000, so change one port before running both HTTP services together.
+
+You can use the `MCP_TRANSPORT` process environment variable instead of the flag. Unlike the wrappers, this server does not load `.env` itself. To load it explicitly with uv:
+
+```bash
+uv run --locked --env-file .env python -m app.mcp_tools.server
+```
+
+### Connect an agent
+
+With the MCP server running in a separate terminal:
+
+```python
+from app.orchestration.gpt_agent import GPTAgent
+
+agent = GPTAgent(
+    name="Text assistant",
+    instructions="Use the available tools for counting words and cleaning spacing.",
+    mcp_url="http://localhost:8000/mcp",
+    mcp_timeout=30,
+)
+result = agent.run_sync("Count the words in: a short example sentence.")
+print(result.final_output)
+```
+
+`mcp_headers` accepts authentication headers when required; obtain credential values from the application environment. `run()` opens a `MCPServerStreamableHttp` connection for the execution and closes it afterward.
+
+For multiple servers, SSE or stdio clients, manage their connection contexts in your application and pass connected objects through `mcp_servers=[...]`. Do not also set `mcp_url` expecting the lists to be combined: that path replaces `self.mcp_servers` with its own connection. Keep the contexts open until the agent finishes.
+
+A browser GET without MCP-compatible headers can return `406 Not Acceptable`; validate the service with an MCP client and a tool call. Additional details are in the [MCP integration reference](.agents/skills/agents-template-integrar-ferramentas/references/mcp.md).
+
+## Sandbox execution and runtime skills
+
+`GPTSandboxAgent` adds the SDK's sandbox capabilities and makes the skills in [app/assets/skills](app/assets/skills) available during execution.
+
+```python
+from app.orchestration.gpt_sandbox_agent import GPTSandboxAgent
+
+agent = GPTSandboxAgent(
+    name="Haiku reviewer",
+    instructions="Use the haiku_quality skill to review the supplied haiku.",
+    skills_dir="app/assets/skills",
+)
+# Requires a configured backend and a model that supports its tools.
+result = agent.run_sync("Review this haiku: An old silent pond / A frog jumps into the pond / Splash! Silence again.")
+print(result.final_output)
+```
+
+| Platform | Default backend selection | Additional requirement |
+|---|---|---|
+| macOS / Linux | `UnixLocalSandboxClient` | A runtime environment compatible with the local backend |
+| Windows | `DockerSandboxClient` | The SDK's optional Docker dependencies and an accessible Docker daemon |
+
+The default dependency installation does not include the optional Docker backend dependencies. Configure them in the environment used for sandbox runs. A backend can also be provided explicitly through `sandbox_client`.
+
+Use a model supporting the sandbox's tools. If you use `agent_id`, remember that the Markdown `model` overrides `OPENAI_SANDBOX_MODEL_NAME`; simply changing the environment does not replace a model fixed in a bundled definition.
+
+### Included runtime skills
+
+| Skill | Purpose |
+|---|---|
+| `haiku_quality` | Review haiku structure, imagery and scoring criteria |
+| `agent_description_writer` | Draft agent definitions in the project's Markdown format |
+
+The wrapper combines default capabilities with lazy skill loading from the selected directory. Supplying `capabilities` explicitly replaces that default composition; include the skill capability if you still need it.
+
+Runtime skills appear at `.agents` inside the sandbox workspace. This is separate from the repository's `.agents/skills/` directory used by coding agents. Making a skill available does not prove that the model read or followed it: verify task-specific behavior or inspect traces when available.
+
+See the [sandbox reference](.agents/skills/agents-template-integrar-ferramentas/references/sandbox.md) for backend selection, paths and validation limits. Construction-only checks do not prove that a sandbox backend can execute.
+
+## FastAPI application
+
+The default [app/main.py](app/main.py) is a minimal HTTP integration scaffold. Start it with:
+
+```bash
+uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+| Endpoint | Purpose | Model call |
+|---|---|---|
+| `GET /health` | Returns `{"status":"ok"}` | No |
+| `POST /example` | Accepts a `data` object and returns a fixed sample message | No |
+| `GET /docs` | Interactive OpenAPI documentation | No |
+
+Example request from a POSIX shell:
+
+```bash
+curl -X POST http://localhost:8000/example \
+  -H "Content-Type: application/json" \
+  -d '{"data":{"message":"hello"}}'
+```
+
+Windows PowerShell equivalent:
+
+```powershell
+Invoke-RestMethod -Uri http://localhost:8000/example -Method Post -ContentType 'application/json' -Body '{"data":{"message":"hello"}}'
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "message": "This is an example response"
+  }
+}
+```
+
+To try the separate haiku endpoint backed by agents, configure OpenAI and run:
+
+```bash
+uv run --locked uvicorn app.tests.test_main:app --port 8001
+```
+
+That example exposes `POST /haiku` with input `{"subject":"the changing seasons"}` and returns `subject`, `haiku` and `score`. Its requests make real model calls. A separate [classification endpoint example](.agents/skills/agents-template-criar-aplicacao/assets/classificacao_api.py) and its startup command are documented in the [development skills guide](docs/development-skills.md).
+
+The examples are starting points for your own endpoints. Define your application's error mapping, access controls and persistence according to its requirements before deploying it.
+
+## Skills for coding agents
+
+The repository includes four development skills under `.agents/skills/`. They help a coding agent use the actual wrappers, generate compatible definitions and validate its implementation.
+
+| Skill | Main task |
+|---|---|
+| [`agents-template-criar-agente`](.agents/skills/agents-template-criar-agente/SKILL.md) | Create or review Markdown definitions, output contracts and loading code |
+| [`agents-template-criar-aplicacao`](.agents/skills/agents-template-criar-aplicacao/SKILL.md) | Implement Python features and FastAPI endpoints, including Decisions integration |
+| [`agents-template-orquestrar-agentes`](.agents/skills/agents-template-orquestrar-agentes/SKILL.md) | Build sequential flows, Decisions-based routing, handoffs and specialist tools |
+| [`agents-template-integrar-ferramentas`](.agents/skills/agents-template-integrar-ferramentas/SKILL.md) | Integrate Python tools, MCP 2 connections and sandbox capabilities |
+
+Example request:
+
+```text
+Use $agents-template-orquestrar-agentes to classify requests with GPTDecision and route them to configured specialists.
+```
+
+Skills are written in Portuguese and versioned with the project. Discovery depends on your coding agent's support for repository skills; in a session that has not discovered them, reload the project or start a new chat. Another agent can also be asked to read the relevant `SKILL.md` directly.
+
+| Location | Used by | Content |
+|---|---|---|
+| `.agents/skills/` | Coding agents working on the project | Development instructions, references and reusable examples |
+| `app/assets/skills/` | Sandbox agents during a task | Runtime skill instructions |
+| `app/assets/agents/` | Agent-definition loaders | Markdown definitions of application agents |
+
+The [complete development skills guide](docs/development-skills.md) covers invocation, assets, validators, discovery and maintenance. No global skill installation is required to keep the skills in this repository.
+
+## Examples and tests
+
+### Offline regression tests
+
+Run all discoverable tests:
+
+```bash
+uv run --locked python -m unittest discover -s app/tests -v
+```
+
+Or run a focused module:
+
+```bash
+uv run --locked python -m unittest app.tests.test_gpt_decision -v
+uv run --locked python -m unittest app.tests.test_mcp_server -v
+uv run --locked python -m unittest app.tests.test_skill_examples -v
+```
+
+| Test module | Coverage |
+|---|---|
+| `test_gpt_decision` | Sync/async SDK requests over mock HTTP transports, typed answers, usage, validation and routing outcomes |
+| `test_mcp_server` | Transport configuration, HTTP tool calls and Agents SDK stdio integration |
+| `test_skill_examples` | Agent definition validation, endpoint contracts, sequential data flow, failure handling and a tool adapter |
+
+These tests do not call paid models or require a Docker backend. They do not establish live provider access, model accuracy, threshold calibration or sandbox execution capability.
+
+Check dependency consistency with:
+
+```bash
+uv pip check
+```
+
+### Runnable demonstrations
+
+Several files under `app/tests/` are demonstrations rather than unittest cases. Running them as modules can make real provider calls:
+
+| Command after `uv run --locked python -m` | Demonstrates | Prerequisites |
+|---|---|---|
+| `app.tests.test_gpt` | Typed translation using `GPT` and a Markdown definition | OpenAI key and model access |
+| `app.tests.test_gpt_agents` | Writer/evaluator handoff using `GPTAgent` | OpenAI key and model access |
+| `app.tests.test_gpt_sandbox_agent` | Sandbox execution with runtime skills | OpenAI key, suitable model and backend |
+| `app.tests.test_gpt_local` | Direct compatible Chat Completions call | Configured server and compatible agent model |
+| `app.tests.test_gpt_agent_local` | Compatible-provider writer/evaluator agents | Configured server, compatible agent models and tool support |
+| `app.examples.decisions` | Grouped decisions or explicit specialist routing | OpenAI key and Decisions model access |
+
+For local demonstrations, review the Markdown models before execution. Always run from the project root as a module, rather than invoking a file path such as `python app/tests/test_gpt_agents.py`.
+
+## Project structure
+
+```text
+.
+|-- .agents/skills/               # Four skills for coding agents
+|-- app/
+|   |-- main.py                   # Minimal FastAPI application
+|   |-- assets/
+|   |   |-- agents/               # Markdown application-agent definitions
+|   |   `-- skills/               # Runtime sandbox skills
+|   |-- examples/
+|   |   `-- decisions.py          # Evaluation and specialist-routing CLI
+|   |-- mcp_tools/
+|   |   |-- server.py             # MCP 2 server and transport selection
+|   |   `-- tools.py              # Text-processing functions
+|   |-- orchestration/
+|   |   |-- config.py             # Environment and model defaults
+|   |   |-- gpt.py                # OpenAI Responses wrapper
+|   |   |-- gpt_agent.py          # Agents SDK wrapper
+|   |   |-- gpt_agent_local.py    # Compatible Chat Completions agents
+|   |   |-- gpt_decision.py       # OpenAI Decisions wrapper
+|   |   |-- gpt_local.py          # Direct compatible Chat Completions calls
+|   |   |-- gpt_sandbox_agent.py  # Sandbox-capable agent
+|   |   `-- util.py               # Markdown agent loaders
+|   `-- tests/                    # Offline tests and live demonstrations
+|-- docs/
+|   |-- decisions.md              # Decisions API and routing guide
+|   `-- development-skills.md     # Coding-agent skills guide
+|-- .python-version               # Preferred development interpreter
+|-- CHANGELOG.md
+|-- env-example
+|-- LICENSE
+|-- pyproject.toml                # Project metadata and dependency constraints
+`-- uv.lock                       # Reproducible dependency resolution
+```
 
 ## Troubleshooting
 
-### `ModuleNotFoundError: No module named 'app'`
+| Symptom | What to check |
+|---|---|
+| `ModuleNotFoundError: No module named 'app'` | Run from the repository root using `uv run --locked python -m ...` |
+| Authentication error | Replace placeholders with the correct provider's key; verify which wrapper and environment variable you are using |
+| Model unavailable or wrong provider model | Inspect both environment settings and the Markdown `model`; frontmatter takes precedence with `agent_id` |
+| Local connection refused | Start the server and verify its port, base URL and loaded model identifier |
+| JSON parsing or Pydantic error | Check the actual response and output contract; compatible-provider structured output depends on model compliance |
+| `Cannot combine structured output constraints with lazy grammar` | Use the current `GPTLocalAgent`, which avoids combining server `response_format` with tool grammar and validates the final text locally |
+| `run_sync()` fails in an active event loop | Use `await agent.run(...)` inside async functions |
+| MCP browser request returns `406` | Use a protocol-aware client with the appropriate headers and make a tool call |
+| MCP transport in `.env` is ignored | Pass `--transport`, export `MCP_TRANSPORT`, or load `.env` with `uv run --env-file .env` |
+| Address already in use | The sample API and MCP HTTP server both default to port 8000; change one port |
+| Sandbox rejects a `custom` tool | Check model capability and the resolved Markdown model, not just the sandbox fallback environment variable |
+| Unix-local sandbox error on Windows | Use the Docker backend or provide a supported client; verify optional dependencies and daemon availability |
+| Skill available but behavior does not show its use | Check a task-specific observable outcome or traces; loading is not proof of use |
+| Decisions returns `review_required` | Inspect `reason`, the named answer, confidence and the configured specialist mapping |
 
-Run examples as modules from the project root:
+## Scope and compatibility
+
+This is an instructional template with small wrappers and examples. The default API has no application-specific business logic, authentication layer, database or background-job system. Add those capabilities as your application requires them.
+
+- **Provider compatibility:** an OpenAI-compatible endpoint does not guarantee support for every parameter, model feature, tool or handoff pattern.
+- **Model selection:** defaults illustrate the current project configuration. Choose available models suitable for the task and validate them in your target environment.
+- **Decisions:** the implementation targets OpenAI and preserves its SDK response types; it is separate from compatible Chat Completions calls.
+- **Sandbox execution:** backend selection and optional dependencies are environment-specific; offline tests do not execute a live sandbox.
+- **Dependencies:** `pyproject.toml` defines allowed versions and `uv.lock` records the resolved environment. OpenAI SDK 3 and MCP SDK 2 are used by the current release; see [compatibility notes](CHANGELOG.md).
+
+## Contributing
+
+Changes should include a concrete example or test appropriate to the behavior being changed, plus the relevant documentation update. Before submitting a change:
 
 ```bash
-python -m app.tests.test_gpt_agents
+uv sync --locked
+uv run --locked python -m unittest discover -s app/tests -v
+uv pip check
+git diff --check
 ```
 
-Instead of:
-
-```bash
-python app/tests/test_gpt_agents.py
-```
-
-### `Invalid value: 'custom'`
-
-This can happen when a sandbox run uses a model that does not support the custom tools used by the sandbox runtime.
-
-Use a GPT-5-family model for sandbox examples:
-
-```env
-OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
-```
-
-Or set it in the agent markdown frontmatter:
-
-```yaml
-model: gpt-5-mini
-```
-
-### `ImportError: UnixLocalSandbox is not supported on Windows`
-
-This error should not occur with the current code, which automatically selects `DockerSandboxClient` on Windows. If you see it, ensure you are running the latest version and that Docker Desktop is running.
-
-### `Connection refused` When Using Local Models
-
-The local server is not running or is listening on a different port. Start LM Studio or Ollama and verify the base URL matches `LOCAL_BASE_URL` in your `.env`.
-
-### Local Model Returns Plain Text Instead Of JSON
-
-The model did not follow the JSON instruction in the system prompt. Try a model with stronger instruction-following capability, or add an explicit reminder in the prompt: `Respond only with valid JSON, no other text.`
-
-### `Cannot combine structured output constraints with lazy grammar`
-
-This can happen on OpenAI-compatible local servers when a request combines handoff/tool grammar with `response_format=json_schema`. `GPTLocalAgent` avoids that combination by default and validates structured output locally after the run. If you still see this error, make sure you are using the current `GPTLocalAgent` implementation and not passing a custom `response_format` through model settings.
-
-### The Skill Exists, But The Output Does Not Prove It Was Used
-
-That is expected. A skill can be available without being obviously reflected in the final answer. For verifiable tests, add a test-only rule to the skill and assert the result.
+When modifying a wrapper or the Markdown loader, review its development skill, examples and provider assumptions. Keep actual credentials out of committed files. In a bug report or pull request, include the command, platform, relevant versions and expected versus observed behavior, with sensitive values removed.
 
 ## License
 
-This project is licensed under the terms in [LICENSE](LICENSE).
+Distributed under the [MIT license](LICENSE).
