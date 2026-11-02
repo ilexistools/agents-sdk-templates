@@ -2,9 +2,10 @@
 
 A didactic Python template for experimenting with OpenAI orchestration patterns.
 
-The project shows five complementary ways to call models:
+The project shows six complementary ways to call models:
 
 - `GPT`: a lightweight wrapper over the OpenAI Responses API with typed parsing.
+- `GPTDecision`: a sync/async wrapper for typed classification, predicates and rubric scores through OpenAI Decisions.
 - `GPTAgent`: a wrapper over `openai-agents` using `Agent` and `Runner.run(...)`.
 - `GPTSandboxAgent`: a sandbox-capable wrapper using `SandboxAgent`, local skills, optional MCP, and a sandbox runtime.
 - `GPTLocal`: a wrapper that calls local servers (LM Studio, Ollama, etc.) or remote providers such as DeepSeek through an OpenAI-compatible `chat.completions` API.
@@ -24,6 +25,7 @@ See the [changelog](CHANGELOG.md) for version history and compatibility notes.
 - Agent definitions loaded from Markdown files via `agent_id`.
 - Sync and async execution patterns.
 - Handoffs between agents.
+- Decisions-based triage with explicit routing to specialists.
 - Optional MCP server integration for `GPTAgent` and `GPTSandboxAgent`.
 - A standalone MCP server with selectable `streamable-http`, `sse`, or `stdio` transport.
 - Local sandbox skills loaded from `app/assets/skills`.
@@ -37,9 +39,12 @@ See the [changelog](CHANGELOG.md) for version history and compatibility notes.
 |-- .agents/
 |   `-- skills/                 # Skills for coding agents working on this project
 |-- docs/
+|   |-- decisions.md
 |   `-- development-skills.md
 |-- app/
 |   |-- main.py
+|   |-- examples/
+|   |   `-- decisions.py
 |   |-- assets/
 |   |   |-- agents/
 |   |   |   |-- writer.md
@@ -57,6 +62,7 @@ See the [changelog](CHANGELOG.md) for version history and compatibility notes.
 |   |-- orchestration/
 |   |   |-- config.py
 |   |   |-- gpt.py
+|   |   |-- gpt_decision.py
 |   |   |-- gpt_agent.py
 |   |   |-- gpt_sandbox_agent.py
 |   |   |-- gpt_local.py
@@ -64,6 +70,7 @@ See the [changelog](CHANGELOG.md) for version history and compatibility notes.
 |   |   `-- util.py
 |   `-- tests/
 |       |-- test_gpt.py
+|       |-- test_gpt_decision.py
 |       |-- test_gpt_agents.py
 |       |-- test_gpt_sandbox_agent.py
 |       |-- test_gpt_local.py
@@ -130,6 +137,7 @@ Use `env-example` as a base and create a `.env` file in the project root:
 ```env
 OPENAI_MODEL_NAME="gpt-4.1-mini"
 OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
+OPENAI_DECISION_MODEL_NAME="gpt-6-luna"
 OPENAI_API_KEY="your-api-key"
 
 # Local model server (LM Studio, Ollama, etc.)
@@ -143,6 +151,9 @@ MCP_TRANSPORT="streamable-http"
 ```
 
 `OPENAI_MODEL_NAME` is the default model for `GPT` and `GPTAgent`. If omitted, defaults to `gpt-4.1-mini`.
+
+`OPENAI_DECISION_MODEL_NAME` configures `GPTDecision` independently and defaults
+to `gpt-6-luna`. See [Decisions and routing](docs/decisions.md) for usage and limits.
 
 `OPENAI_SANDBOX_MODEL_NAME` is used by `GPTSandboxAgent`. Sandbox agents rely on custom tool support, so a GPT-5-family model such as `gpt-5-mini` is recommended.
 
@@ -218,7 +229,9 @@ How to write haiku...
 
 ### Loading An Agent By ID
 
-Pass `agent_id` to any wrapper class to load everything from the markdown file:
+Pass `agent_id` to an agent-definition wrapper (`GPT`, `GPTAgent`,
+`GPTSandboxAgent`, `GPTLocal` or `GPTLocalAgent`) to load configuration from the
+Markdown file. `GPTDecision` takes questions directly and does not use `agent_id`:
 
 ```python
 from app.orchestration.gpt_agent import GPTAgent
@@ -248,10 +261,11 @@ agent = GPTAgent(
 Shared environment and model logic lives in `app/orchestration/config.py`.
 
 ```python
-from app.orchestration.config import default_model, sandbox_model
+from app.orchestration.config import default_model, sandbox_model, decision_model
 
 regular_model = default_model()   # reads OPENAI_MODEL_NAME
 sandbox_default = sandbox_model() # reads OPENAI_SANDBOX_MODEL_NAME
+decisions_default = decision_model() # reads OPENAI_DECISION_MODEL_NAME
 ```
 
 The utility `load_agent_config` in `app/orchestration/util.py` is used internally by wrappers that support `agent_id` to load and assemble agent configuration from a markdown file:
@@ -353,6 +367,24 @@ Demonstrates `GPTLocal` using a locally running model server. Requires `LOCAL_BA
 ### `app/tests/test_gpt_agent_local.py`
 
 Demonstrates `GPTLocalAgent` with a writer/evaluator flow using a local model. Same flow as `test_gpt_agents.py` but routed through the local server.
+
+## Decisions and routing
+
+Use `GPTDecision` when you need a condition probability, a category from a fixed
+set or a score against an ordered rubric. It returns the SDK `Decision` object,
+including typed answers, refusals and token usage. The application can then
+route a request to a specialist using an explicit mapping.
+
+Run the grouped-question example with an OpenAI key configured:
+
+```bash
+uv run --locked python -m app.examples.decisions --mode evaluate
+```
+
+For routing, supply a calibrated confidence threshold explicitly. The example
+returns `review_required` for refused, uncertain or unmapped answers without
+executing a specialist. See the [complete Decisions guide](docs/decisions.md)
+for sync/async calls, configuration, routing examples and offline tests.
 
 ## `GPTAgent` With MCP
 
@@ -650,7 +682,10 @@ And a sync convenience method:
 result = agent.run_sync(prompt)
 ```
 
-Do not call `run_sync(...)` inside an already-running event loop. In async contexts such as FastAPI endpoints, use `await agent.run(prompt)`. The wrappers raise a clear `RuntimeError` if `run_sync(...)` is called from inside an active event loop.
+In async contexts such as FastAPI endpoints, use `await agent.run(...)`.
+The agent wrappers reject `run_sync(...)` inside an active event loop; the
+direct API wrappers use blocking synchronous clients. `GPTDecision` additionally
+requires `questions=...` in both methods and returns the complete SDK `Decision`.
 
 ## Customization
 
@@ -658,6 +693,7 @@ Do not call `run_sync(...)` inside an already-running event loop. In async conte
 - Add or edit skills under `app/assets/skills/<skill_name>/SKILL.md`.
 - Change the regular model with `OPENAI_MODEL_NAME` in `.env`, or set `model` in the agent markdown frontmatter.
 - Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`.
+- Configure Decisions separately with `OPENAI_DECISION_MODEL_NAME`; use `GPTDecision(model=...)` for an explicit override.
 - Change the local model server or compatible remote provider (such as DeepSeek) with `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` in `.env`.
 - Keep local tracing disabled with `LOCAL_DISABLE_TRACING="true"`, or set it to `false` when you want Agents SDK traces exported with a valid `OPENAI_API_KEY`.
 - Choose the sample MCP server transport with `MCP_TRANSPORT`, or pass `--transport` when running `app.mcp_tools.server`.

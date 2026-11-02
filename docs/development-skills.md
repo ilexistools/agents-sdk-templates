@@ -38,10 +38,12 @@ but an agent should load only the references relevant to that request.
   application's real loader. It builds on the writing guidance in the existing
   runtime `agent_description_writer` skill without replacing that skill.
 - **Create an application:** wrapper selection, provider configuration, output
-  parsing limits, and a runnable FastAPI example with a classification endpoint.
+  parsing limits, Decisions integration guidance, and a runnable FastAPI example
+  with a classification endpoint.
 - **Orchestrate agents:** guidance distinguishing mandatory Python stages,
   model-selected handoffs and specialists as tools; an importable two-stage
-  extraction/review example with injectable agents and explicit contracts.
+  extraction/review example with injectable agents and explicit contracts;
+  explicit classification-based routing with `GPTDecision` is also documented.
 - **Integrate tools:** a pure Python function and its `function_tool` adapter,
   MCP 2 server/client lifecycle guidance, and sandbox backend/skill configuration.
 
@@ -124,3 +126,12 @@ validation in the target environment. Offline tests do not establish those claim
 Formal skill manifests can additionally be checked with `quick_validate.py` from
 an installed `skill-creator` skill; that tool is authoring infrastructure and is
 not a new application dependency.
+
+For Decisions-based triage, ask:
+
+```text
+Use $agents-template-orquestrar-agentes to classify requests with GPTDecision and route them to configured specialists.
+```
+
+See [Decisions and routing](decisions.md) for its runnable examples, dedicated
+configuration, review outcomes and offline tests.

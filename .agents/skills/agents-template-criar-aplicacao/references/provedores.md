@@ -7,6 +7,7 @@ em `uv.lock`; não atualize dependências só para reproduzir um exemplo.
 | Destino | Configuração | Wrappers previstos |
 |---|---|---|
 | OpenAI | `OPENAI_API_KEY`, `OPENAI_MODEL_NAME` | `GPT`, `GPTAgent` |
+| Decisions OpenAI | `OPENAI_API_KEY`, `OPENAI_DECISION_MODEL_NAME` | `GPTDecision` |
 | Sandbox OpenAI | anteriores e `OPENAI_SANDBOX_MODEL_NAME` | `GPTSandboxAgent` |
 | LM Studio / Ollama | `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, `LOCAL_API_KEY` | `GPTLocal`, `GPTLocalAgent` |
 | DeepSeek | as mesmas variáveis `LOCAL_*`, com chave real DeepSeek | `GPTLocal`, `GPTLocalAgent` |

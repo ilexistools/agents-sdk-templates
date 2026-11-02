@@ -1,6 +1,6 @@
 ---
 name: agents-template-orquestrar-agentes
-description: Implementar fluxos com vários agentes deste template, escolhendo entre etapas sequenciais, handoffs e agentes como ferramentas, com contratos e tratamento de falhas. Use quando mais de um agente participar do processamento de uma solicitação.
+description: Implementar fluxos com vários agentes deste template, escolhendo entre etapas sequenciais, roteamento por Decisions, handoffs e agentes como ferramentas, com contratos e tratamento de falhas. Use quando mais de um agente participar do processamento de uma solicitação.
 ---
 
 # Orquestrar agentes do projeto
@@ -11,6 +11,9 @@ para escolher o fluxo antes de implementar.
 
 ## Escolha do fluxo
 
+- Para triagem em categorias fixas antes da execução, considere `GPTDecision`
+  com um mapa explícito de categorias para especialistas. Leia a seção de
+  Decisions em [padrões](references/padroes.md); não é um handoff do SDK.
 - Use uma sequência Python com `await` quando todas as etapas forem obrigatórias,
   houver ordem definida ou o código precisar validar cada resultado.
 - Use `handoffs=[especialista]` quando o modelo precisar transferir a condução
@@ -32,7 +35,7 @@ Com `agent_id`, confira o `model` do frontmatter de cada especialista: ele
 prevalece sobre o ambiente e o argumento homônimo do construtor. Configure
 todos para o provedor correto, inclusive os destinos de handoff.
 
-Os wrappers `GPT` e `GPTLocal` não herdam `Agent`; não os passe diretamente a
+Os wrappers `GPT`, `GPTLocal` e `GPTDecision` não herdam `Agent`; não os passe diretamente a
 `handoffs` ou use `as_tool` neles. Ferramentas/handoffs com provedores compatíveis
 precisam de validação por modelo, em especial quando houver raciocínio.
 

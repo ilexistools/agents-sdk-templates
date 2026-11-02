@@ -1,5 +1,6 @@
 OPENAI_MODEL_NAME="gpt-4.1-mini"
 OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
+OPENAI_DECISION_MODEL_NAME="gpt-6-luna"
 OPENAI_API_KEY="your-api-key"
 
 # Local model server (LM Studio, Ollama, etc.)

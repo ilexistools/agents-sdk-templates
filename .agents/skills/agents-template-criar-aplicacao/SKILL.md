@@ -1,6 +1,6 @@
 ---
 name: agents-template-criar-aplicacao
-description: Implementar funcionalidades Python, serviços ou endpoints FastAPI usando os wrappers deste projeto, com OpenAI, modelos locais ou DeepSeek. Use para integrar chamadas de modelos a uma aplicação; não para um pedido restrito à redação de uma definição Markdown.
+description: Implementar funcionalidades Python, serviços ou endpoints FastAPI usando os wrappers deste projeto, com OpenAI, Decisions, modelos locais ou DeepSeek. Use para integrar chamadas de modelos a uma aplicação; não para um pedido restrito à redação de uma definição Markdown.
 ---
 
 # Criar aplicações com os wrappers
@@ -15,6 +15,7 @@ ou alterar wrappers quando a configuração existente resolve o pedido.
 | Necessidade | Wrapper |
 |---|---|
 | OpenAI Responses API, saída tipada | `GPT` |
+| Probabilidade, categoria fixa ou score de rubrica | `GPTDecision` |
 | OpenAI com ferramentas e handoffs | `GPTAgent` |
 | Execução em sandbox e skills de execução | `GPTSandboxAgent` |
 | Chat Completions local ou remoto compatível | `GPTLocal` |
@@ -25,6 +26,10 @@ conexão escolhida. Leia [integração FastAPI](references/fastapi.md) se houver
 endpoint HTTP. Para configuração avançada, confira a assinatura do SDK
 instalado; os wrappers aceitam `**kwargs`, mas não encaminham qualquer opção.
 
+Para Decisions, leia [decisões e triagem](references/decisions.md). Esse wrapper
+recebe perguntas diretamente, não usa `agent_id`/`output_type` e devolve o objeto
+SDK `Decision` inteiro, em vez do conteúdo final dos wrappers de agentes.
+
 ## Implementar
 
 - Defina modelos Pydantic de entrada e saída adequados à funcionalidade.
@@ -34,7 +39,8 @@ instalado; os wrappers aceitam `**kwargs`, mas não encaminham qualquer opção.
   argumentos homônimos. Se o modelo for configurável por ambiente, omita
   `model` do Markdown. Consulte `load_agent_config` para a precedência atual.
 - Em FastAPI e outras funções assíncronas, use `await wrapper.run(prompt)`.
-  Os wrappers retornam o conteúdo final, não o `RunResult` do SDK.
+  Os wrappers de agentes retornam o conteúdo final, não o `RunResult` do SDK.
+  `GPTDecision.run(...)` exige `questions` e retorna `Decision`.
 - Em `GPTLocal` e `GPTLocalAgent`, a saída estruturada depende de instruções
   e parsing; não prometa JSON Schema garantido pelo servidor.
 - Mantenha chaves em variáveis de ambiente e acrescente apenas placeholders

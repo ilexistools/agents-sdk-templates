@@ -4,6 +4,23 @@ Fontes: `app/orchestration/gpt_agent.py`, `gpt_agent_local.py` e
 `app/tests/test_gpt_agents.py`. Confira a API do SDK instalado para opções
 que os exemplos não usam.
 
+## Triagem com Decisions
+
+Use `app/examples/decisions.py` como padrão de classificação seguida de execução.
+O [guia de Decisions](../../../../docs/decisions.md) descreve o contrato completo.
+`route_request` recebe um decider, especialistas configurados e um limiar explícito;
+somente uma categoria mapeada que atinge o limiar executa um especialista.
+
+Preserve a decisão original junto ao resultado para inspeção. Em recusa,
+confiança insuficiente ou categoria sem destino, devolva uma condição de revisão
+sem executar um especialista arbitrário. Escolha o limiar com exemplos rotulados;
+o valor ilustrativo da documentação não é uma política universal.
+
+`GPTDecision` retorna `Decision`, enquanto os especialistas do exemplo retornam
+`GPTAgentResponse`. Não tente usá-lo como destino de handoff. Ele classifica a
+entrada; o mapa no código define a ação. Erros de API ou do especialista devem
+continuar identificáveis como falhas, sem virar categorias de sucesso.
+
 ## Sequência obrigatória
 
 O [exemplo de extração e revisão](../assets/fluxo_sequencial.py) é um módulo

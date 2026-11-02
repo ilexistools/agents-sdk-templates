@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 — 2026-11-02
+
+- Add `GPTDecision` with synchronous/asynchronous calls, injectable lazy clients,
+  named-question validation and complete SDK responses, including refusals and usage.
+- Add grouped predicate/choice/score examples and explicit specialist routing with
+  caller-selected confidence thresholds and review outcomes.
+- Add offline Decisions transport/routing tests and document the API, configuration
+  and examples; update the application and orchestration development skills.
+
 ## 0.6.0 — 2026-11-02
 
 - Update OpenAI to 3.42.1, Agents SDK to 0.24.0 and the remaining dependencies;
