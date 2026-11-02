@@ -1,0 +1,3 @@
+interface:
+  display_name: "Criar aplicações com o template"
+  short_description: "Aplicações Python e FastAPI com os wrappers do projeto"

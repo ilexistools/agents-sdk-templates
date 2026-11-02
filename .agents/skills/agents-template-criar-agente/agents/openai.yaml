@@ -1,0 +1,3 @@
+interface:
+  display_name: "Criar agentes com o template"
+  short_description: "Definições Markdown, contratos e carregamento de agentes"

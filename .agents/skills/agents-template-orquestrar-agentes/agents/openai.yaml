@@ -1,0 +1,3 @@
+interface:
+  display_name: "Orquestrar agentes do template"
+  short_description: "Fluxos sequenciais, handoffs e especialistas como tools"

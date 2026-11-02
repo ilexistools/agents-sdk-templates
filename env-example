@@ -10,5 +10,11 @@ LOCAL_MODEL_NAME="local-model"
 LOCAL_API_KEY="lm-studio"
 LOCAL_DISABLE_TRACING="true"
 
+# DeepSeek hosted API: replace the LOCAL_* values above with these values.
+# LOCAL_BASE_URL="https://api.deepseek.com"
+# LOCAL_MODEL_NAME="deepseek-flash"
+# LOCAL_API_KEY="your-deepseek-api-key"
+# Keep LOCAL_DISABLE_TRACING="true" to use only the DeepSeek API key.
+
 # MCP server transport: streamable-http, sse, or stdio
 MCP_TRANSPORT="streamable-http"

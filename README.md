@@ -7,10 +7,15 @@ The project shows five complementary ways to call models:
 - `GPT`: a lightweight wrapper over the OpenAI Responses API with typed parsing.
 - `GPTAgent`: a wrapper over `openai-agents` using `Agent` and `Runner.run(...)`.
 - `GPTSandboxAgent`: a sandbox-capable wrapper using `SandboxAgent`, local skills, optional MCP, and a sandbox runtime.
-- `GPTLocal`: a wrapper that calls any OpenAI-compatible local server (LM Studio, Ollama, etc.) via `chat.completions`.
-- `GPTLocalAgent`: same as `GPTAgent` but pointed at a local server via `OpenAIChatCompletionsModel`.
+- `GPTLocal`: a wrapper that calls local servers (LM Studio, Ollama, etc.) or remote providers such as DeepSeek through an OpenAI-compatible `chat.completions` API.
+- `GPTLocalAgent`: same as `GPTAgent` but pointed at a local server or compatible remote provider via `OpenAIChatCompletionsModel`.
 
 It also exposes a small FastAPI endpoint and a sample MCP tools server.
+
+Coding agents can use the repository's four [development skills](docs/development-skills.md)
+to create agents, build applications, orchestrate workflows and integrate tools.
+
+See the [changelog](CHANGELOG.md) for version history and compatibility notes.
 
 ## What This Project Demonstrates
 
@@ -29,6 +34,10 @@ It also exposes a small FastAPI endpoint and a sample MCP tools server.
 
 ```text
 .
+|-- .agents/
+|   `-- skills/                 # Skills for coding agents working on this project
+|-- docs/
+|   `-- development-skills.md
 |-- app/
 |   |-- main.py
 |   |-- assets/
@@ -59,6 +68,8 @@ It also exposes a small FastAPI endpoint and a sample MCP tools server.
 |       |-- test_gpt_sandbox_agent.py
 |       |-- test_gpt_local.py
 |       |-- test_gpt_agent_local.py
+|       |-- test_mcp_server.py
+|       |-- test_skill_examples.py
 |       `-- test_main.py
 |-- pyproject.toml
 |-- uv.lock
@@ -73,13 +84,16 @@ It also exposes a small FastAPI endpoint and a sample MCP tools server.
 
 Project dependencies (defined in `pyproject.toml`):
 
-- `openai`
-- `openai-agents`
-- `python-dotenv`
-- `pyyaml`
-- `fastapi`
-- `uvicorn`
-- `mcp[cli]`
+- `openai>=3.42.1,<4`
+- `openai-agents>=0.24.0`
+- `python-dotenv>=1.2.4`
+- `pyyaml>=6.0.3`
+- `fastapi>=0.162.0`
+- `uvicorn>=0.54.0`
+- `mcp[cli]>=2.3.0,<3`
+
+`uv.lock` pins the resolved versions, including transitive dependencies. Use
+`uv sync --locked` to reproduce the checked-in environment.
 
 ## Setup
 
@@ -135,6 +149,28 @@ MCP_TRANSPORT="streamable-http"
 `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` are used by `GPTLocal` and `GPTLocalAgent`. `LOCAL_DISABLE_TRACING` defaults to `true` for local agent runs so a placeholder `OPENAI_API_KEY` does not trigger tracing export warnings. See [Local Models](#local-models-lm-studio-ollama-and-others) for details.
 
 `MCP_TRANSPORT` is used by the sample MCP server in `app/mcp_tools/server.py`. If omitted, it defaults to `streamable-http`.
+
+## Skills for development
+
+The repository includes four coding-agent skills under `.agents/skills/`:
+
+| Skill | Purpose |
+|---|---|
+| `agents-template-criar-agente` | Agent Markdown definitions, output contracts and loading examples |
+| `agents-template-criar-aplicacao` | Python features and FastAPI endpoints using OpenAI, local servers or DeepSeek |
+| `agents-template-orquestrar-agentes` | Sequential workflows, handoffs and specialists as tools |
+| `agents-template-integrar-ferramentas` | Python tools, MCP 2 and sandbox configuration |
+
+For example, ask your coding agent:
+
+```text
+Use $agents-template-criar-aplicacao to build a classification endpoint using DeepSeek.
+```
+
+These development skills guide the coding agent. Runtime skills used by
+`GPTSandboxAgent` remain under `app/assets/skills/`. See the
+[development skills guide](docs/development-skills.md) for discovery, all
+invocation examples, bundled assets, validation commands and maintenance.
 
 ## Agent Definitions
 
@@ -349,6 +385,17 @@ When `mcp_url` is omitted, `GPTAgent` calls `Runner.run(agent, prompt)` directly
 
 The project includes a standalone MCP server in `app/mcp_tools/server.py`.
 
+It uses MCP SDK 2's `MCPServer`. HTTP host, port, path, and response settings
+are passed to `run()` for the selected transport; `stdio` needs no HTTP settings.
+
+Run the offline MCP regression checks (no API key required):
+
+```bash
+uv run --locked python -m unittest app.tests.test_mcp_server -v
+```
+
+These check transport options, HTTP tool calls, and the Agents SDK's stdio integration.
+
 Run it from the project root:
 
 ```bash
@@ -457,13 +504,13 @@ For stronger evidence during testing, use one or more of these strategies:
 
 ## Local Models (LM Studio, Ollama, and Others)
 
-`GPTLocal` and `GPTLocalAgent` work with any server that exposes an OpenAI-compatible REST API. No real API key is required.
+`GPTLocal` and `GPTLocalAgent` connect to servers that expose an OpenAI-compatible Chat Completions API. Local servers such as LM Studio and Ollama typically accept a placeholder API key; authenticated servers require their own key. These wrappers also accept remote providers; see [DeepSeek API](#deepseek-api).
 
 | Server | Default base URL | `LOCAL_API_KEY` |
 |---|---|---|
 | LM Studio | `http://localhost:1234/v1` | `lm-studio` |
 | Ollama | `http://localhost:11434/v1` | `ollama` |
-| Other | custom | any non-empty string |
+| Other | custom | server-specific key, or a placeholder if authentication is disabled |
 
 ### `GPTLocal`
 
@@ -530,6 +577,65 @@ print(result.model_dump())
 
 `GPTLocalAgent` follows the same prompt-and-parse approach for local structured output while still using the Agents SDK runner for handoffs, tools, and MCP. If the model returns non-JSON text, Pydantic validation will raise an error for custom output models.
 
+## DeepSeek API
+
+Despite their names, `GPTLocal` and `GPTLocalAgent` can connect to DeepSeek's
+hosted API using a DeepSeek API key. No additional library is required: DeepSeek
+supports the OpenAI SDK's Chat Completions interface. See the
+[official DeepSeek quickstart](https://api-docs.deepseek.com/guides/harness).
+
+Set these values in your `.env` file, replacing the placeholder with your
+DeepSeek API key:
+
+```dotenv
+LOCAL_BASE_URL="https://api.deepseek.com"
+LOCAL_MODEL_NAME="deepseek-flash"
+LOCAL_API_KEY="your-deepseek-api-key"
+LOCAL_DISABLE_TRACING="true"
+```
+
+The `LOCAL_*` names are the configuration variables already used by these
+wrappers, including for remote endpoints. `LOCAL_API_KEY` must contain the real
+DeepSeek key. An OpenAI API key is not required for these examples while tracing
+is disabled. Keep the key in your local environment rather than in source code.
+
+For a direct model call, run from the project root:
+
+```python
+from app.orchestration.gpt_local import GPTLocal
+
+model = GPTLocal()
+result = model.run_sync("Explain machine learning in Portuguese.")
+print(result.final_output)
+```
+
+For an agent using the Agents SDK:
+
+```python
+from app.orchestration.gpt_agent_local import GPTLocalAgent
+
+agent = GPTLocalAgent(
+    name="DeepSeek assistant",
+    instructions="Answer clearly in Portuguese.",
+)
+result = agent.run_sync("Explain machine learning.")
+print(result.final_output)
+```
+
+Both examples use `LOCAL_MODEL_NAME`. You can also pass `base_url`, `api_key`,
+and `model` explicitly when constructing either wrapper without `agent_id`.
+When using `agent_id`, the Markdown frontmatter's `model` takes precedence over
+`LOCAL_MODEL_NAME` and the constructor's `model`; set that frontmatter to a
+DeepSeek model or omit it to use `LOCAL_MODEL_NAME`.
+
+These wrappers request structured output through prompt instructions and parse
+the result with Pydantic. JSON output, tool calls, MCP, handoffs, and reasoning
+mode require validation with the selected DeepSeek model; API compatibility
+does not guarantee identical behavior across providers. In particular, tool
+calls in thinking mode may require provider-specific handling of reasoning
+content. This configuration has been checked against the project code and
+provider documentation, but has not been validated with a live DeepSeek call.
+
 ## Sync Versus Async
 
 Every wrapper exposes an async method:
@@ -552,7 +658,7 @@ Do not call `run_sync(...)` inside an already-running event loop. In async conte
 - Add or edit skills under `app/assets/skills/<skill_name>/SKILL.md`.
 - Change the regular model with `OPENAI_MODEL_NAME` in `.env`, or set `model` in the agent markdown frontmatter.
 - Change the sandbox model with `OPENAI_SANDBOX_MODEL_NAME` in `.env`.
-- Change the local model server with `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` in `.env`.
+- Change the local model server or compatible remote provider (such as DeepSeek) with `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, and `LOCAL_API_KEY` in `.env`.
 - Keep local tracing disabled with `LOCAL_DISABLE_TRACING="true"`, or set it to `false` when you want Agents SDK traces exported with a valid `OPENAI_API_KEY`.
 - Choose the sample MCP server transport with `MCP_TRANSPORT`, or pass `--transport` when running `app.mcp_tools.server`.
 - Add handoffs by passing `handoffs=[other_agent]` at construction time.

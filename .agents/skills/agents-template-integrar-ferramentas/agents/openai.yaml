@@ -1,0 +1,3 @@
+interface:
+  display_name: "Integrar ferramentas ao template"
+  short_description: "Funções Python, conexões MCP 2 e execução em sandbox"

@@ -1,20 +1,14 @@
 import argparse
 import os
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from app.mcp_tools.tools import (
     count_words,
     normalize_whitespace,
 )
 
-mcp = FastMCP(
-    "Template Tools MCP",
-    host="0.0.0.0",
-    port=8000,
-    stateless_http=True,
-    json_response=True,
-)
+mcp = MCPServer("Template Tools MCP")
 
 
 @mcp.tool()
@@ -55,7 +49,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    mcp.run(transport=args.transport, mount_path="/mcp")
+    if args.transport == "stdio":
+        mcp.run(transport="stdio")
+    elif args.transport == "sse":
+        mcp.run(transport="sse", host="0.0.0.0", port=8000)
+    else:
+        mcp.run(
+            transport="streamable-http",
+            host="0.0.0.0",
+            port=8000,
+            streamable_http_path="/mcp",
+            stateless_http=True,
+            json_response=True,
+        )
 
 if __name__ == "__main__":
     main()
