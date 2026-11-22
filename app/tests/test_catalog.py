@@ -97,7 +97,7 @@ class CatalogStandardTests(unittest.TestCase):
             response = client.put("/api/settings", json={"OPENAI_API_KEY": secret, "OPENAI_MODEL_NAME": "gpt-test"})
             self.assertEqual(response.status_code, 200)
             self.assertNotIn(secret, response.text)
-            fields = {field["key"]: field for field in client.get("/api/settings").json()}
+            fields = {field["key"]: field for field in client.get("/api/settings").json()["fields"]}
             self.assertEqual(fields["OPENAI_API_KEY"]["hint"], "••••abcd")
             self.assertNotIn("value", fields["OPENAI_API_KEY"])
             self.assertEqual(fields["OPENAI_MODEL_NAME"]["value"], "gpt-test")

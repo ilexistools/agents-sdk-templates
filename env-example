@@ -32,5 +32,11 @@ LOCAL_DISABLE_TRACING="true"
 # LOCAL_API_KEY="your-deepseek-api-key"
 # Keep LOCAL_DISABLE_TRACING="true" to use only the DeepSeek API key.
 
+# Access token for the dashboard and API. Required to listen on a non-local address
+# (Docker, servers). Browsers: any user name, the token as password.
+# CATALOG_TOKEN="a-long-random-string"
+# Block editing settings from the dashboard (keys come only from the environment).
+# CATALOG_SETTINGS_READONLY="true"
+
 # MCP server transport: streamable-http, sse, or stdio
 MCP_TRANSPORT="streamable-http"

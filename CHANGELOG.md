@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Add `python -m app serve | mcp | catalog`, a single entry point that reads
+  `HOST`/`PORT` and refuses to listen on a non-local address without a token.
+- Add optional access protection: `CATALOG_TOKEN` requires a Bearer token or
+  Basic auth on every request except `GET /health`; `CATALOG_SETTINGS_READONLY`
+  makes Settings read-only. `.env` is loaded at startup so both can live there.
+- Add a `Dockerfile`, `.dockerignore` and `docker-compose.yml` (with an optional
+  MCP-over-HTTP profile) and a "Run and deploy" guide in the README.
+- `GET /api/settings` now returns `{"readonly": ..., "fields": [...]}`.
+
 ## 0.8.0 — 2026-11-22
 
 - Add a catalog of agents and tools: items in `app/agents/<id>/` and

@@ -193,7 +193,14 @@ overridden with `CATALOG_ENV_FILE`):
   entry to `PROVIDERS` and its key to `env-example`; Settings and the dashboard pick it up.
   Otherwise use the `local` provider with its base URL.
 
-## 10. Checklist before publishing
+## 10. Running the project
+
+`uv run --locked python -m app serve` starts the dashboard and API, `python -m app mcp`
+the MCP server and `python -m app catalog ...` the CLI. For Docker, tokens and hosting,
+see "Run and deploy" in the README. Items need nothing extra to be deployed: anything
+that passes `check` is included in the image.
+
+## 11. Checklist before publishing
 
 ```powershell
 uv run --locked python -m app.catalog_cli check

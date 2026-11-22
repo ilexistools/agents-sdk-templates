@@ -8,7 +8,7 @@ A Python starter project for building typed model integrations, agent workflows 
 
 The template keeps orchestration visible in ordinary Python: wrappers handle model calls, Pydantic models describe outputs, Markdown files define agents, and application code controls execution. It is intended for learning, prototyping and adapting these patterns to your own application.
 
-[Getting started](#getting-started) · [Catalog](#catalog-of-agents-and-tools) · [Providers and models](#providers-and-models) · [Wrapper reference](#wrapper-reference) · [Decisions](#decisions-and-routing) · [Development skills](#skills-for-coding-agents) · [Changelog](CHANGELOG.md)
+[Getting started](#getting-started) · [Catalog](#catalog-of-agents-and-tools) · [Providers and models](#providers-and-models) · [Run and deploy](#run-and-deploy) · [Wrapper reference](#wrapper-reference) · [Decisions](#decisions-and-routing) · [Development skills](#skills-for-coding-agents) · [Changelog](CHANGELOG.md)
 
 ## What you can build
 
@@ -28,6 +28,7 @@ The repository includes executable examples, offline regression tests, five skil
 - [Getting started](#getting-started)
 - [Catalog of agents and tools](#catalog-of-agents-and-tools)
 - [Providers and models](#providers-and-models)
+- [Run and deploy](#run-and-deploy)
 - [Wrapper reference](#wrapper-reference)
 - [Configuration](#configuration)
 - [Typed outputs and execution](#typed-outputs-and-execution)
@@ -72,7 +73,7 @@ uv run --locked python -m unittest discover -s app/tests -v
 Or start the application:
 
 ```bash
-uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000
+uv run --locked python -m app serve
 ```
 
 Open [the catalog dashboard](http://localhost:8000/), [the health endpoint](http://localhost:8000/health) or [the interactive API documentation](http://localhost:8000/docs). The `word_count` tool runs offline from the dashboard; agents need a provider (next step).
@@ -161,7 +162,7 @@ The application includes a catalog: every folder in `app/agents/` or `app/tools/
 | CLI | `uv run --locked python -m app.catalog_cli list \| check \| new \| run \| enable \| disable` |
 | MCP | `uv run --locked python -m app.catalog_mcp` (stdio by default; see below) |
 
-The dashboard is an admin tool for local use: it has no authentication, so keep it bound to `127.0.0.1`.
+The dashboard is an admin tool: without `CATALOG_TOKEN` it has no authentication, so it only listens on `127.0.0.1`. See [Run and deploy](#run-and-deploy) to protect it with a token and run it elsewhere.
 
 ```powershell
 uv run --locked python -m app.catalog_cli list
@@ -220,6 +221,71 @@ Everything after the first `:` is the model name. A reference without a known pr
 **How it works.** [app/orchestration/providers.py](app/orchestration/providers.py) holds the provider presets. `create_agent` returns a `GPTAgent` (OpenAI Responses API, native structured output) for `openai:` and a `GPTLocalAgent` (Chat Completions, JSON schema in the instructions, validated locally) for every other provider. It raises `RuntimeError("Missing setting: ...")` when the provider's key is not configured. To add a provider with an OpenAI-compatible endpoint, add one `Provider(...)` entry to `PROVIDERS` and its key to `env-example`; Settings lists it automatically.
 
 Provider compatibility still varies: tools, handoffs, reasoning and JSON compliance depend on the model. Prefer capable models for structured output, and validate the combination you plan to use.
+
+## Run and deploy
+
+Once you have built your agents and tools, anyone with a copy of the project can run it in one of three ways.
+
+### On a computer, with uv
+
+```bash
+uv sync --locked
+uv run --locked python -m app serve                 # dashboard + API: http://127.0.0.1:8000
+uv run --locked python -m app mcp                   # MCP server for a local client (stdio)
+uv run --locked python -m app catalog list          # catalog CLI
+```
+
+`serve` accepts `--host`, `--port` and `--reload`, or the `HOST` and `PORT` environment variables.
+
+### With Docker
+
+The repository includes a [Dockerfile](Dockerfile) and [docker-compose.yml](docker-compose.yml) (Docker Compose 2.24 or later).
+
+1. Create `.env` from `env-example` with your provider keys, and add an access token:
+
+   ```dotenv
+   CATALOG_TOKEN="a-long-random-string"
+   ```
+
+2. Start it:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. Open http://127.0.0.1:8000. The browser asks for a user name and password: use any user name and the token as the password.
+
+| Command | Effect |
+|---|---|
+| `docker compose up -d --build` | Build and start the dashboard + API |
+| `docker compose --profile mcp up -d --build` | Also start the MCP server over HTTP on `http://127.0.0.1:8001/mcp` |
+| `docker compose logs -f app` | Follow the logs |
+| `docker compose down` | Stop (catalog state and settings stay in the `data` volume) |
+
+Without Compose: `docker build -t my-agents .` then `docker run -p 127.0.0.1:8000:8000 -e CATALOG_TOKEN=... --env-file .env -v agents-data:/data my-agents`.
+
+The ports are published on `127.0.0.1` only. To reach the server from other machines, change the mapping to `"8000:8000"` and put it behind a reverse proxy with HTTPS. The MCP HTTP endpoint has no token, so keep it local or behind an authenticating proxy.
+
+### On a hosting platform
+
+Any service that runs a Dockerfile (Render, Railway, Fly.io, Google Cloud Run, Azure Container Apps, ...) works: the image listens on `$PORT`, exposes `GET /health` for health checks and keeps its state in `/data`. Set `CATALOG_TOKEN` and your provider keys as the platform's secrets, set `CATALOG_SETTINGS_READONLY=true` so keys are managed only there, and attach a persistent volume at `/data` if you want dashboard changes (enabled items, channels, models) to survive restarts.
+
+### Security and run settings
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `CATALOG_TOKEN` | Not set | When set, every request except `GET /health` needs it, as `Authorization: Bearer <token>` or Basic auth (any user, token as password) |
+| `CATALOG_SETTINGS_READONLY` | `false` | `true` blocks changes to Settings from the dashboard and API; keys come from the environment |
+| `HOST`, `PORT` | `127.0.0.1`, `8000` | Address used by `python -m app serve` (the image uses `0.0.0.0`) |
+| `CATALOG_DB`, `CATALOG_ENV_FILE` | Repository root | Catalog state and the settings file (`/data/...` in the image) |
+
+`python -m app serve` refuses to listen on a non-local address without `CATALOG_TOKEN`, because the dashboard can read and change API keys (pass `--insecure` only on isolated, trusted networks). Calling the API with a token:
+
+```bash
+curl -H "Authorization: Bearer $CATALOG_TOKEN" http://127.0.0.1:8000/api/catalog
+```
+
+In Docker, values from `.env` are passed as environment variables and take precedence over keys later edited in Settings (which are saved to `/data/.env`). Use one or the other for each key.
 
 ## Wrapper reference
 
@@ -641,8 +707,10 @@ See the [sandbox reference](.agents/skills/agents-template-integrar-ferramentas/
 The default [app/main.py](app/main.py) is a minimal HTTP integration scaffold that also mounts the [catalog](#catalog-of-agents-and-tools) dashboard and API ([app/catalog_api.py](app/catalog_api.py)). Start it with:
 
 ```bash
-uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+uv run --locked python -m app serve --reload
 ```
+
+`python -m app serve` wraps uvicorn (`app.main:app`); you can still run uvicorn directly.
 
 | Endpoint | Purpose | Model call |
 |---|---|---|
@@ -738,6 +806,7 @@ uv run --locked python -m unittest app.tests.test_skill_examples -v
 
 | Test module | Coverage |
 |---|---|
+| `test_deploy` | `python -m app` entry point, refusal to listen publicly without a token, token authentication (Bearer and Basic) and read-only Settings |
 | `test_catalog` | Every item follows the standard, tool examples produce their expected output, catalog API and MCP channel filtering, the `new` generator, Settings (keys never returned, validation), model references, `create_agent` backends, per-agent model choice and provider endpoints |
 | `test_gpt_decision` | Sync/async SDK requests over mock HTTP transports, typed answers, usage, validation and routing outcomes |
 | `test_mcp_server` | Transport configuration, HTTP tool calls and Agents SDK stdio integration |
@@ -778,7 +847,9 @@ For local demonstrations, review the Markdown models before execution. Always ru
 |   |-- catalog.html              # Catalog dashboard
 |   |-- catalog_api.py            # Dashboard, catalog, settings and provider endpoints
 |   |-- catalog_cli.py            # Catalog CLI (list, check, new, run, enable, disable)
+|   |-- __main__.py               # `python -m app serve | mcp | catalog`
 |   |-- catalog_mcp.py            # Catalog MCP server
+|   |-- security.py               # CATALOG_TOKEN and read-only Settings
 |   |-- settings.py               # Settings stored in .env (keys write-only)
 |   |-- agents/<id>/              # Catalog agents: item.toml, handler.py, README.md
 |   |-- tools/<id>/               # Catalog tools: item.toml, handler.py, README.md
@@ -808,6 +879,7 @@ For local demonstrations, review the Markdown models before execution. Always ru
 |   `-- development-skills.md     # Coding-agent skills guide
 |-- .python-version               # Preferred development interpreter
 |-- AGENTS.md, CLAUDE.md          # Rules for AI coding assistants
+|-- Dockerfile, docker-compose.yml # Container image and local deployment
 |-- CHANGELOG.md
 |-- env-example
 |-- LICENSE
@@ -837,6 +909,10 @@ For local demonstrations, review the Markdown models before execution. Always ru
 | **Test connection** fails | For local servers, start the server and check its address; for hosted providers, check the key (HTTP 401/403 means it was rejected) |
 | Agent ignores the model chosen in Settings | A per-agent choice or the prompt's `model:` takes precedence over `DEFAULT_MODEL`; the side panel shows which one is in use |
 | Settings change not seen by the MCP server | Restart `app.catalog_mcp`; it runs in its own process |
+| `Refusing to listen on 0.0.0.0 without CATALOG_TOKEN` | Set `CATALOG_TOKEN` (in `.env` or the environment), or run on `127.0.0.1` |
+| Browser keeps asking for a password, or the API returns `401` | Use any user name and `CATALOG_TOKEN` as the password; API clients send `Authorization: Bearer <token>` |
+| `docker compose` says `Set CATALOG_TOKEN` | Add `CATALOG_TOKEN` to `.env` next to `docker-compose.yml` |
+| Settings shows "Read-only" | The server runs with `CATALOG_SETTINGS_READONLY=true`; change keys in its environment and restart |
 | `catalog_cli check` reports a problem | Follow the message; the rules are in [docs/catalog-standards.md](docs/catalog-standards.md) |
 
 ## Scope and compatibility

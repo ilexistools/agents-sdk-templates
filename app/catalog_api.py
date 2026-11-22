@@ -17,6 +17,7 @@ from app.catalog import (
     set_model_choice,
 )
 from app.orchestration.providers import PROVIDERS, ResolvedModel, list_models
+from app.security import settings_readonly
 from app.settings import providers_status, read_settings, update_settings, validate_model_ref
 
 router = APIRouter()
@@ -123,7 +124,7 @@ async def run_item(item_id: str, payload: dict):
 @router.get("/api/settings")
 def get_settings():
     """Model provider settings. Secret values are never returned, only a masked hint."""
-    return read_settings()
+    return {"readonly": settings_readonly(), "fields": read_settings()}
 
 
 @router.get("/api/providers")
@@ -158,7 +159,9 @@ def provider_models(provider_id: str):
 @router.put("/api/settings")
 def put_settings(changes: dict[str, str | None]):
     """Update settings in .env. Send only changed keys; null or "" removes a value."""
+    if settings_readonly():
+        raise HTTPException(403, "Settings are read-only on this server (CATALOG_SETTINGS_READONLY).")
     try:
-        return update_settings(changes)
+        return {"readonly": False, "fields": update_settings(changes)}
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc

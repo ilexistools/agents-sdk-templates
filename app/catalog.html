@@ -595,6 +595,7 @@ byId('kind').addEventListener('click', event => {
 const settingsDialog = byId('settings');
 const settingsStatus = byId('settings-status');
 let settings = [];
+let settingsReadonly = false;
 const settingsChanges = {};
 function settingsMessage(text, kind) {
   settingsStatus.textContent = text;
@@ -625,10 +626,11 @@ function settingField(field) {
     else { input.value = field.value; input.placeholder = field.default; }
   }
   input.id = inputId;
+  input.disabled = settingsReadonly;
   if (field.key === 'DEFAULT_MODEL') input.setAttribute('list', 'model-suggestions');
   input.oninput = () => { settingsChanges[field.key] = input.value.trim(); settingsMessage('Unsaved changes.'); };
   row.append(input);
-  if (field.secret && field.set) {
+  if (field.secret && field.set && !settingsReadonly) {
     const clear = node('button', 'Remove', 'ghost');
     clear.type = 'button';
     clear.onclick = () => { input.value = ''; settingsChanges[field.key] = null; settingsMessage(field.label + ' will be removed when you save.'); };
@@ -737,10 +739,15 @@ async function openSettings() {
   try {
     const response = await fetch('/api/settings');
     if (!response.ok) throw Error();
-    settings = await response.json();
+    const body = await response.json();
+    settings = body.fields;
+    settingsReadonly = body.readonly;
     await loadProviders();
     drawSettings();
-    settingsMessage('API keys are never shown again after saving.');
+    byId('save-settings').hidden = settingsReadonly;
+    settingsMessage(settingsReadonly
+      ? 'Read-only: this server takes its settings from the environment.'
+      : 'API keys are never shown again after saving.');
   } catch {
     settingsMessage('Could not load settings.', 'error');
   }
@@ -765,7 +772,7 @@ byId('settings-form').onsubmit = async event => {
     });
     const body = await response.json();
     if (!response.ok) throw Error(typeof body.detail === 'string' ? body.detail : 'Could not save settings.');
-    settings = body;
+    settings = body.fields;
     for (const key of Object.keys(settingsChanges)) delete settingsChanges[key];
     for (const key of Object.keys(details)) delete details[key];
     await loadProviders();

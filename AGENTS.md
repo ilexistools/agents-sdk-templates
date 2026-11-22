@@ -22,5 +22,9 @@ When creating or changing any item in `app/agents/` or `app/tools/`, follow
    - `uv run --locked python -m app.catalog_cli check`
    - `uv run --locked python -m unittest app.tests.test_catalog -v`
 
+Run the project with `uv run --locked python -m app serve` (dashboard + API) or
+`python -m app mcp`. Never weaken `app/security.py` or remove the token requirement
+for non-local hosts.
+
 Do not change `app/catalog*.py` or `app/catalog.html` to accommodate a single item:
 if the standard does not fit the case, propose a change to the standard.

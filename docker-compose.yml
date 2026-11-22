@@ -1,0 +1,41 @@
+# Run the project with Docker:
+#   1. Put CATALOG_TOKEN (and your provider keys) in .env, e.g. CATALOG_TOKEN="a-long-random-string"
+#   2. docker compose up -d --build
+#   3. Open http://127.0.0.1:8000 and sign in with any user name and the token as password.
+# MCP over HTTP as well:  docker compose --profile mcp up -d --build
+# See "Run and deploy" in the README.
+
+x-app: &app
+  build: .
+  image: ${IMAGE_NAME:-agents-catalog}
+  restart: unless-stopped
+  env_file:
+    - path: .env          # provider keys, DEFAULT_MODEL, CATALOG_TOKEN...
+      required: false
+  volumes:
+    - data:/data          # catalog state and settings edited in the dashboard
+
+services:
+  app:
+    <<: *app
+    environment:
+      CATALOG_TOKEN: ${CATALOG_TOKEN:?Set CATALOG_TOKEN in .env or in the shell}
+      CATALOG_SETTINGS_READONLY: ${CATALOG_SETTINGS_READONLY:-false}
+      PORT: "8000"        # port inside the container; change the published port below
+    ports:
+      # Only this computer can reach it. Use "8000:8000" to expose it on the network
+      # (preferably behind a reverse proxy with HTTPS).
+      - "127.0.0.1:${PORT:-8000}:8000"
+
+  mcp:
+    <<: *app
+    profiles: ["mcp"]
+    command: ["python", "-m", "app", "mcp", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8001"]
+    healthcheck:
+      disable: true
+    ports:
+      # The MCP HTTP endpoint has no token: keep it local or put it behind an authenticating proxy.
+      - "127.0.0.1:${MCP_PORT:-8001}:8001"
+
+volumes:
+  data:
