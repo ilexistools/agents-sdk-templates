@@ -4,9 +4,9 @@ title = "Summarizer"
 description = "Summarizes a text in its original language, keeping the key points."
 icon = "📝"
 category = "Text"
-version = "1.1.0"
+version = "1.2.0"
 tags = ["text", "llm"]
-requires = ["OPENAI_API_KEY"]
+requires = []
 channels = ["api", "cli", "mcp"]
 
 [[examples]]

@@ -14,8 +14,10 @@ from app.catalog import (
     execute,
     set_active,
     set_channels,
+    set_model_choice,
 )
-from app.settings import read_settings, update_settings
+from app.orchestration.providers import PROVIDERS, ResolvedModel, list_models
+from app.settings import providers_status, read_settings, update_settings, validate_model_ref
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -27,6 +29,10 @@ class ActivationRequest(BaseModel):
 
 class ChannelsRequest(BaseModel):
     channels: set[str]
+
+
+class ModelRequest(BaseModel):
+    model: str | None = None
 
 
 def get_item(item_id: str):
@@ -84,6 +90,19 @@ def change_channels(item_id: str, request: ChannelsRequest):
     return {"id": item.id, "channels": sorted(channels)}
 
 
+@router.patch("/api/catalog/{item_id}/model")
+def change_model(item_id: str, request: ModelRequest):
+    """Choose the model for an agent as provider:model; null restores the default."""
+    item = get_item(item_id)
+    try:
+        if request.model:
+            validate_model_ref(request.model)
+        set_model_choice(item, request.model)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"id": item.id, "model": item.model()}
+
+
 @router.post("/api/catalog/{item_id}/run")
 async def run_item(item_id: str, payload: dict):
     item = get_item(item_id)
@@ -105,6 +124,35 @@ async def run_item(item_id: str, payload: dict):
 def get_settings():
     """Model provider settings. Secret values are never returned, only a masked hint."""
     return read_settings()
+
+
+@router.get("/api/providers")
+def get_providers():
+    """Supported providers, example model references and whether each is configured."""
+    return providers_status()
+
+
+@router.post("/api/providers/{provider_id}/models")
+def provider_models(provider_id: str):
+    """Connect to the provider and list the models it serves (used to test a setup)."""
+    if provider_id not in PROVIDERS:
+        raise HTTPException(404, "Unknown provider.")
+    try:
+        models = list_models(provider_id)
+    except Exception as exc:
+        logger.info("Provider test failed for %s (%s)", provider_id, type(exc).__name__)
+        status = getattr(exc, "status_code", None)
+        base_url = ResolvedModel(PROVIDERS[provider_id], "").base_url
+        if isinstance(exc, RuntimeError):
+            reason = str(exc)
+        elif status in (401, 403):
+            reason = f"The provider rejected the API key (HTTP {status})."
+        elif status:
+            reason = f"The provider answered with HTTP {status}."
+        else:
+            reason = f"Could not connect to {base_url}. Check that the server is running and the address is right."
+        raise HTTPException(502, reason) from exc
+    return {"provider": provider_id, "models": [f"{provider_id}:{model}" for model in models]}
 
 
 @router.put("/api/settings")

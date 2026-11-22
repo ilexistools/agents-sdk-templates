@@ -16,7 +16,7 @@ Write everything in English.
 2. **Generate the skeleton.**
    `uv run --locked python -m app.catalog_cli new <agent|tool> <id> --title "<Title>"`
 3. **Fill in the contract** in `handler.py`: fields with `description`, Pydantic
-   constraints, and pure logic (tool) or a `GPTAgent` call (agent).
+   constraints, and pure logic (tool) or a `create_agent()` call (agent).
 4. **Fill in the manifest** `item.toml`: a description starting with a present-tense
    verb (up to 120 characters), an existing `category` whenever possible, `requires`,
    and realistic examples (with `output` for tools).
@@ -27,7 +27,7 @@ Write everything in English.
    - `uv run --locked python -m app.catalog_cli check`
    - `uv run --locked python -m unittest app.tests.test_catalog -v`
    - `uv run --locked python -m app.catalog_cli run <id> --example 1`
-     (agents need `OPENAI_API_KEY`, set in the dashboard's Settings; without it,
+     (agents need a configured provider in the dashboard's Settings; without one,
      report that the example was not run).
 
 ## Changing existing items

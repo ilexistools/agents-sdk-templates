@@ -7,7 +7,7 @@ icon = "🤖"                             # one emoji
 category = "General"                     # groups items in the dashboard
 version = "0.1.0"                        # SemVer; bump it when Input/Output changes
 tags = ["llm"]                           # up to 6 lowercase keywords
-requires = ["OPENAI_API_KEY"]            # required settings (configured in Settings)
+requires = []                            # extra settings; the model provider key is checked automatically
 channels = ["api", "cli", "mcp"]
 
 [[examples]]

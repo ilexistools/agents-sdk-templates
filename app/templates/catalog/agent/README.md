@@ -10,7 +10,7 @@
 ## How it works
 
 1. `handler.py` validates the input (`Input`).
-2. `GPTAgent` loads the prompt from `app/assets/agents/__ID__.md`.
+2. `create_agent` picks the provider and model and loads the prompt from `app/assets/agents/__ID__.md`.
 3. The model answers in the `Output` format, which is validated before being returned.
 
 Explain the prompt decisions that are not obvious.
@@ -27,5 +27,5 @@ uv run --locked python -m app.catalog_cli run __ID__ --example 1
 
 ## Requirements and limitations
 
-- Requires `OPENAI_API_KEY` (set it in the dashboard's **Settings**).
+- Needs a model provider configured in the dashboard's **Settings**.
 - LLM answers vary between runs; do not use it for exact calculations.

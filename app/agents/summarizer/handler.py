@@ -2,11 +2,12 @@
 
 The model behavior lives in ``app/assets/agents/summarizer.md``.
 This handler only validates the input, calls the agent and returns the structured output.
+``create_agent`` picks the provider and model (see docs/catalog-standards.md).
 """
 
 from pydantic import BaseModel, Field
 
-from app.orchestration.gpt_agent import GPTAgent
+from app.orchestration.providers import create_agent
 
 
 class Input(BaseModel):
@@ -18,5 +19,5 @@ class Output(BaseModel):
 
 
 async def run(request: Input) -> Output:
-    agent = GPTAgent(agent_id="summarizer", output_type=Output)
+    agent = create_agent("summarizer", output_type=Output)
     return await agent.run(request.text)

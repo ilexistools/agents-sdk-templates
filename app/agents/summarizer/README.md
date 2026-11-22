@@ -23,7 +23,7 @@ Flow of a run:
 1. A channel (API, CLI or MCP) receives `{"text": "..."}` and the catalog checks
    that the item is enabled on that channel.
 2. `handler.py` validates the input with `Input` (the text cannot be empty).
-3. `GPTAgent(agent_id="summarizer")` reads `summarizer.md`: the front matter sets `role`,
+3. `create_agent("summarizer")` picks the provider and model (dashboard choice, prompt or default) and reads `summarizer.md`: the front matter sets `role`,
    `goal` and `max_tokens`, and every section (`# INPUT`, `# OUTPUT`, `# INSTRUCTIONS`,
    `# KNOWLEDGE`) is appended to the instructions sent to the model.
 4. The model answers with `output_type=Output`, that is, JSON with `summary`.
@@ -43,6 +43,7 @@ Output (varies between runs): `{"summary": "The 2027 budget was approved with 8%
 
 ## Requirements and limitations
 
-- Requires `OPENAI_API_KEY` (set it in the dashboard's **Settings**); the model can be changed there too (`OPENAI_MODEL_NAME`).
+- Works with any provider configured in **Settings**; uses the default model unless another is chosen in its side panel.
+- Small local models may return malformed JSON; prefer a capable model for reliable structured output.
 - `max_tokens: 768` limits the summary length.
 - Very long texts may exceed the model's context window; split them first.

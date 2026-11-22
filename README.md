@@ -749,10 +749,10 @@ uv run --locked python -m app.catalog_cli enable word_count
 ```
 
 - **API**. `GET /api/catalog` lists the items and `GET /api/catalog/{id}` returns the input and output fields documented in the handler. `PATCH /api/catalog/{id}` accepts `{"active": false}`. `POST /api/catalog/{id}/run` accepts the item's input object.
-- **Settings**. The gear icon in the dashboard edits the API keys and model names in `.env` (`GET`/`PUT /api/settings`). Keys are never returned, only a masked hint. Use `CATALOG_ENV_FILE` to point to another file.
+- **Providers and models**. Agents run on any provider: OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Groq, OpenRouter, Ollama, LM Studio or any OpenAI-compatible server. Models are written as `provider:model` (e.g. `anthropic:claude-sonnet-5-5`, `ollama:llama3.2`). Set the default model and each provider's key in **Settings** (gear icon), test the connection there, and pick a different model per agent in its side panel. Keys are stored in `.env` and never returned, only a masked hint (`GET`/`PUT /api/settings`, `GET /api/providers`). Use `CATALOG_ENV_FILE` to point to another file.
 - **MCP**. Configure the client to start `uv run --locked python -m app.catalog_mcp` over stdio, with the repository root as the working directory. The client may need to refresh its tool list after a status change.
 - **State**. Items start enabled. State is shared through `.catalog.sqlite3` in the root. Use `CATALOG_DB` to point the processes to another SQLite file.
-- **Examples**. `word_count` works offline. `summarizer` takes `{"text": "..."}` and needs `OPENAI_API_KEY`, with an optional model in `OPENAI_MODEL_NAME`.
+- **Examples**. `word_count` works offline. `summarizer` takes `{"text": "..."}` and needs a configured model provider.
 
 To add another item, follow [docs/catalog-standards.md](docs/catalog-standards.md)
 and use the generator, which creates the manifest, contract, README and (for agents) the prompt:

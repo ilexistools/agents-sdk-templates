@@ -36,6 +36,26 @@ h1{font-size:24px;letter-spacing:-.025em;margin:0;font-weight:650}
 .docs-link{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--accent-text);font-size:13px;font-weight:600;text-decoration:none}
 .docs-link:hover{background:var(--accent-soft);border-color:var(--accent)}
 .api-help{display:block;margin-top:8px;font-size:12px;color:var(--text-3)}
+details.provider{border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface)}
+details.provider[open]{padding-bottom:12px}
+details.provider summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;cursor:pointer;list-style:none;font-size:14px;font-weight:600}
+details.provider summary::-webkit-details-marker{display:none}
+details.provider summary::before{content:"›";display:inline-block;width:12px;color:var(--text-3);transition:rotate .15s}
+details.provider[open] summary::before{rotate:90deg}
+.provider-name{flex:1}
+details.provider .setting{padding:0 14px}
+.provider-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 14px}
+.provider-actions .api-help{margin:0}
+.test-result{margin:8px 14px 0;font-size:12px;color:var(--text-3);overflow-wrap:anywhere}
+.test-result:empty{display:none}
+.test-result.ok{color:var(--ok-text)}.test-result.error{color:var(--danger)}
+.badge{font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;background:var(--off-soft);color:var(--text-3)}
+.badge.ok{background:var(--ok-soft);color:var(--ok-text)}
+.model-row{display:flex;gap:6px;margin-top:10px}
+.model-row input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font:13px ui-monospace,SFMono-Regular,Consolas,monospace}
+.model-row input:focus{outline:none;border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
+.model-current{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px}
+.model-current code{font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace}
 .stats{display:flex;gap:8px}
 .icon-button{display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text-2);cursor:pointer}
 .icon-button:hover{background:var(--surface-2);color:var(--text)}
@@ -203,6 +223,7 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
 </main>
 <div class="backdrop" id="backdrop"></div>
 <aside class="sidebar" id="sidebar" role="dialog" aria-modal="true" aria-labelledby="side-title" aria-hidden="true"></aside>
+<datalist id="model-suggestions"></datalist>
 <dialog class="settings" id="settings" aria-labelledby="settings-title">
   <form id="settings-form" novalidate>
     <div class="dialog-head">
@@ -343,6 +364,54 @@ function fieldList(fields) {
   }
   return list;
 }
+const MODEL_SOURCES = {item: 'Chosen here', prompt: 'From the agent prompt', default: 'Default model'};
+function modelSection(item) {
+  const section = node('section', '', 'side-section');
+  section.append(node('h3', 'Model'));
+  const info = details[item.id];
+  if (!info || info.error || !info.model) { section.append(node('p', info ? 'Unavailable.' : 'Loading…', 'side-description')); return section; }
+  const model = info.model;
+  const current = node('div', '', 'model-current');
+  current.append(node('code', model.ref), node('span', MODEL_SOURCES[model.source] || model.source, 'badge' + (model.source === 'item' ? ' ok' : '')));
+  const row = node('div', '', 'model-row');
+  const input = document.createElement('input');
+  input.setAttribute('list', 'model-suggestions');
+  input.placeholder = 'provider:model, e.g. ollama:llama3.2';
+  input.setAttribute('aria-label', 'Model for this agent');
+  input.value = model.source === 'item' ? model.ref : '';
+  input.spellcheck = false;
+  const save = node('button', 'Use', 'ghost');
+  save.type = 'button';
+  const message = node('p', '', 'side-feedback');
+  const apply = async value => {
+    save.disabled = true;
+    try {
+      const response = await fetch('/api/catalog/' + encodeURIComponent(item.id) + '/model', {
+        method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({model: value})
+      });
+      const body = await response.json();
+      if (!response.ok) throw Error(typeof body.detail === 'string' ? body.detail : 'Could not change the model.');
+      delete details[item.id];
+      loadDetails(item);
+    } catch (error) {
+      message.textContent = error.message;
+      save.disabled = false;
+    }
+  };
+  save.onclick = () => apply(input.value.trim() || null);
+  input.onkeydown = event => { if (event.key === 'Enter') { event.preventDefault(); save.click(); } };
+  row.append(input, save);
+  if (model.source === 'item') {
+    const reset = node('button', 'Reset', 'ghost');
+    reset.type = 'button';
+    reset.title = 'Go back to the prompt or default model';
+    reset.onclick = () => apply(null);
+    row.append(reset);
+  }
+  const help = node('small', 'Any provider configured in Settings. Leave empty to use the default.', 'api-help');
+  section.append(current, row, help, message);
+  return section;
+}
 function docsSection(item) {
   const section = node('section', '', 'side-section');
   section.append(node('h3', 'Contract'));
@@ -392,6 +461,7 @@ function examplesSection(item) {
 }
 function openSidebar(item) {
   selected = item;
+  if (!providers.length) loadProviders();
   loadDetails(item);
   drawSidebar();
   sidebar.classList.add('open');
@@ -471,7 +541,9 @@ function drawSidebar() {
 
   body.append(title, description, facts);
   if (warning) body.append(warning);
-  body.append(statusSection, channelSection, docsSection(item), examplesSection(item));
+  body.append(statusSection, channelSection);
+  if (item.type === 'agent') body.append(modelSection(item));
+  body.append(docsSection(item), examplesSection(item));
   sidebar.replaceChildren(head, body);
 }
 async function setChannels(item, options) {
@@ -553,6 +625,7 @@ function settingField(field) {
     else { input.value = field.value; input.placeholder = field.default; }
   }
   input.id = inputId;
+  if (field.key === 'DEFAULT_MODEL') input.setAttribute('list', 'model-suggestions');
   input.oninput = () => { settingsChanges[field.key] = input.value.trim(); settingsMessage('Unsaved changes.'); };
   row.append(input);
   if (field.secret && field.set) {
@@ -564,17 +637,85 @@ function settingField(field) {
   wrap.append(label, row, node('small', field.help));
   return wrap;
 }
+let providers = [];
+async function loadProviders() {
+  try {
+    const response = await fetch('/api/providers');
+    if (!response.ok) throw Error();
+    providers = await response.json();
+  } catch {
+    providers = [];
+  }
+  const list = byId('model-suggestions');
+  const known = new Set([...list.options].map(option => option.value));
+  for (const provider of providers) {
+    for (const ref of provider.examples) if (!known.has(ref)) { list.append(new Option(ref)); known.add(ref); }
+  }
+}
+function addSuggestions(refs) {
+  const list = byId('model-suggestions');
+  const known = new Set([...list.options].map(option => option.value));
+  for (const ref of refs) if (!known.has(ref)) list.append(new Option(ref));
+}
+function providerSection(id, fields) {
+  const info = providers.find(provider => provider.id === id) || {label: fields[0].group, ready: false, local: false};
+  const section = document.createElement('details');
+  section.className = 'provider';
+  const summary = document.createElement('summary');
+  summary.append(node('span', info.label, 'provider-name'));
+  const state = info.local ? 'Local' : info.ready ? 'Ready' : 'Not configured';
+  summary.append(node('span', state, 'badge' + (info.ready && !info.local ? ' ok' : '')));
+  section.open = info.ready && !info.local;
+  const test = node('button', 'Test connection', 'ghost');
+  test.type = 'button';
+  const result = node('p', '', 'test-result');
+  test.onclick = async () => {
+    test.disabled = true;
+    result.className = 'test-result';
+    result.textContent = Object.keys(settingsChanges).length ? 'Save first to test the new values.' : 'Connecting…';
+    if (Object.keys(settingsChanges).length) { test.disabled = false; return; }
+    try {
+      const response = await fetch('/api/providers/' + encodeURIComponent(id) + '/models', {method: 'POST'});
+      const body = await response.json();
+      if (!response.ok) throw Error(typeof body.detail === 'string' ? body.detail : 'Connection failed.');
+      addSuggestions(body.models);
+      result.className = 'test-result ok';
+      const sample = body.models.slice(0, 4).join(', ');
+      result.textContent = 'Connected. ' + body.models.length + ' models available' + (sample ? ': ' + sample + (body.models.length > 4 ? '…' : '') : '.');
+    } catch (error) {
+      result.className = 'test-result error';
+      result.textContent = error.message;
+    }
+    test.disabled = false;
+  };
+  const examples = info.examples && info.examples.length ? node('small', 'Use as ' + info.examples[0], 'api-help') : null;
+  section.append(summary, ...fields.map(settingField));
+  const actions = node('div', '', 'provider-actions');
+  actions.append(test);
+  if (examples) actions.append(examples);
+  section.append(actions, result);
+  return section;
+}
 function drawSettings() {
   const groups = new Map();
   for (const field of settings) {
-    if (!groups.has(field.group)) groups.set(field.group, []);
-    groups.get(field.group).push(field);
+    const key = field.provider ? 'provider:' + field.provider : field.group;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(field);
   }
   const body = byId('settings-fields');
   body.replaceChildren();
-  for (const [group, fields] of groups) {
+  const providerSet = document.createElement('fieldset');
+  providerSet.append(node('legend', 'Providers'));
+  let providersAdded = false;
+  for (const [key, fields] of groups) {
+    if (key.startsWith('provider:')) {
+      providerSet.append(providerSection(key.slice(9), fields));
+      if (!providersAdded) { body.append(providerSet); providersAdded = true; }
+      continue;
+    }
     const set = document.createElement('fieldset');
-    set.append(node('legend', group), ...fields.map(settingField));
+    set.append(node('legend', key), ...fields.map(settingField));
     body.append(set);
   }
   const api = document.createElement('fieldset');
@@ -597,6 +738,7 @@ async function openSettings() {
     const response = await fetch('/api/settings');
     if (!response.ok) throw Error();
     settings = await response.json();
+    await loadProviders();
     drawSettings();
     settingsMessage('API keys are never shown again after saving.');
   } catch {
@@ -626,6 +768,7 @@ byId('settings-form').onsubmit = async event => {
     settings = body;
     for (const key of Object.keys(settingsChanges)) delete settingsChanges[key];
     for (const key of Object.keys(details)) delete details[key];
+    await loadProviders();
     drawSettings();
     settingsMessage('Saved. New runs use these settings.', 'saved');
     if (selected) { loadDetails(selected); }

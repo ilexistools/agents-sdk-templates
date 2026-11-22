@@ -4,6 +4,7 @@ name: __TITLE__
 role: The agent's role in a few words
 goal: A verifiable goal in one sentence.
 max_tokens: 1024
+# model: anthropic:claude-sonnet-5-5   # optional provider:model; omit to use the default model
 ---
 
 # INPUT

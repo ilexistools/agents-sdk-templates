@@ -21,7 +21,7 @@ class GPTAgent(Agent):
             self.name = config["name"]
             self.role = config["role"]
             self.instructions = config["instructions"]
-            self.model = config["model"]
+            self.model = kwargs.get("model") or config["model"]
             self.max_output_tokens = config["max_tokens"]
             self.output_type = kwargs.get("output_type", GPTAgentResponse)
             self.tools = kwargs.get("tools", [])

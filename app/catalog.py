@@ -47,10 +47,30 @@ class Item(BaseModel):
     def implementation(self):
         return importlib.import_module(f"app.{self.type}s.{self.id}.handler")
 
+    def model(self) -> dict | None:
+        """Model an agent will use: per-item override, prompt front matter or the default."""
+        if self.type != "agent":
+            return None
+        from app.orchestration.providers import agent_model_ref, parse
+
+        ref, source = agent_model_ref(self.id, model_choice(self.id))
+        resolved = parse(ref)
+        return {
+            "ref": ref,
+            "source": "item" if source == "argument" else source,
+            "provider": resolved.provider.id,
+            "provider_label": resolved.provider.label,
+            "missing_key": resolved.missing_key,
+        }
+
     def missing_requirements(self) -> list[str]:
         from app.settings import configured_value
 
-        return [name for name in self.requires if not configured_value(name)]
+        missing = [name for name in self.requires if not configured_value(name)]
+        model = self.model()
+        if model and model["missing_key"] and model["missing_key"] not in missing:
+            missing.append(model["missing_key"])
+        return missing
 
 
 def load_item(path: Path) -> Item:
@@ -89,6 +109,7 @@ def describe(item: Item) -> dict:
         "input": _fields(handler.Input),
         "output": _fields(handler.Output),
         "missing_requirements": item.missing_requirements(),
+        "model": item.model(),
     }
 
 
@@ -113,6 +134,9 @@ def check(item: Item) -> list[str]:
                 problems.append(f"{name}.{field} has no description (use Field(description=...)).")
     if not inspect.iscoroutinefunction(getattr(handler, "run", None)):
         problems.append("handler.run must be async run(request: Input) -> Output.")
+    source = (item.folder / "handler.py").read_text(encoding="utf-8")
+    if item.type == "agent" and "create_agent(" not in source:
+        problems.append("Agent handlers must build the agent with create_agent() so any provider works.")
     if problems:
         return problems
     for example in item.examples:
@@ -132,6 +156,7 @@ def connect():
     try:
         db.execute("CREATE TABLE IF NOT EXISTS activation (id TEXT PRIMARY KEY, active INTEGER NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS item_channels (id TEXT PRIMARY KEY, channels TEXT NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS item_models (id TEXT PRIMARY KEY, model TEXT NOT NULL)")
     except Exception:
         db.close()
         raise
@@ -171,6 +196,29 @@ def set_channels(item: Item, channels: set[Channel]) -> set[Channel]:
     return channels
 
 
+def model_choice(item_id: str) -> str | None:
+    """Model reference chosen for this item in the dashboard, if any."""
+    with closing(connect()) as db:
+        row = db.execute("SELECT model FROM item_models WHERE id = ?", (item_id,)).fetchone()
+    return row[0] if row else None
+
+
+def set_model_choice(item: Item, model: str | None) -> None:
+    if item.type != "agent":
+        raise ValueError("Only agents use a model.")
+    model = (model or "").strip()
+    if len(model) > 200 or any(char in model for char in "\r\n\0"):
+        raise ValueError("Invalid model reference.")
+    with closing(connect()) as db, db:
+        if model:
+            db.execute(
+                "INSERT INTO item_models VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET model = excluded.model",
+                (item.id, model),
+            )
+        else:
+            db.execute("DELETE FROM item_models WHERE id = ?", (item.id,))
+
+
 def is_available(item: Item, channel: Channel) -> bool:
     return channel in configured_channels(item) and bool(activation().get(item.id, True))
 
@@ -182,6 +230,12 @@ class Unavailable(ValueError):
 async def execute(item: Item, channel: Channel, payload: dict) -> BaseModel:
     if not is_available(item, channel):
         raise Unavailable("Item is not available on this channel.")
+    from app.orchestration.providers import model_override
+
     handler = item.implementation()
     request = handler.Input.model_validate(payload)
-    return handler.Output.model_validate(await handler.run(request))
+    token = model_override.set(model_choice(item.id) if item.type == "agent" else None)
+    try:
+        return handler.Output.model_validate(await handler.run(request))
+    finally:
+        model_override.reset(token)

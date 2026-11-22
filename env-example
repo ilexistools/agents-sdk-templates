@@ -1,3 +1,18 @@
+# Model used by catalog agents, written as provider:model.
+# Providers: openai, anthropic, gemini, deepseek, mistral, groq, openrouter, ollama, lmstudio, local
+# Examples: anthropic:claude-sonnet-5-5, gemini:gemini-2.5-flash, ollama:llama3.2
+DEFAULT_MODEL="openai:gpt-4.1-mini"
+
+# Provider keys: set only the ones you use (the dashboard's Settings can edit them).
+# ANTHROPIC_API_KEY="your-anthropic-key"
+# GEMINI_API_KEY="your-gemini-key"
+# DEEPSEEK_API_KEY="your-deepseek-key"
+# MISTRAL_API_KEY="your-mistral-key"
+# GROQ_API_KEY="your-groq-key"
+# OPENROUTER_API_KEY="your-openrouter-key"
+# OLLAMA_BASE_URL="http://localhost:11434/v1"
+# LMSTUDIO_BASE_URL="http://localhost:1234/v1"
+
 OPENAI_MODEL_NAME="gpt-4.1-mini"
 OPENAI_SANDBOX_MODEL_NAME="gpt-5-mini"
 OPENAI_DECISION_MODEL_NAME="gpt-6-luna"

@@ -54,7 +54,7 @@ class GPTLocalAgent(Agent):
             self.name = config["name"]
             self.role = config["role"]
             instructions_text = config["instructions"]
-            model_name = config["model"] or _local_model()
+            model_name = kwargs.get("model") or config["model"] or _local_model()
             self.max_output_tokens = config["max_tokens"]
             self.requested_output_type = kwargs.get("output_type", GPTAgentLocalResponse)
             self.tools = kwargs.get("tools", [])

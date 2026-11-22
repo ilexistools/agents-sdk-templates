@@ -15,7 +15,7 @@ may still *answer* in the user's language when that is their purpose.
 |---|---|---|
 | Nature | Deterministic code | LLM call with its own prompt |
 | Same input → same output? | Yes | Not necessarily |
-| Needs network or an API key? | Preferably not | Yes (`OPENAI_API_KEY`) |
+| Needs network or an API key? | Preferably not | Yes, for the chosen provider (none for local servers) |
 | Where the logic lives | Pure Python functions | Prompt in `app/assets/agents/<id>.md` |
 | Example | `word_count` | `summarizer` |
 
@@ -28,7 +28,7 @@ tool. Use an agent only when the task needs natural language, judgment or text g
 item.toml ──► catalog (discovery, state, channels) ──► API / CLI / MCP / dashboard
 handler.py ─► Input ──► async run() ──► Output
                          │
-                         └─ agent: GPTAgent reads app/assets/agents/<id>.md
+                         └─ agent: create_agent() picks the provider and reads app/assets/agents/<id>.md
 ```
 
 1. `app/catalog.py` finds every `app/agents/*/item.toml` and `app/tools/*/item.toml`.
@@ -37,8 +37,8 @@ handler.py ─► Input ──► async run() ──► Output
 3. On each run the catalog checks that the item is enabled on the channel, validates the
    input with `Input`, calls `run` and validates the result with `Output`.
 4. Enabled state and channels are stored in `.catalog.sqlite3` (not versioned).
-5. Model credentials and model names come from `.env`, editable in the dashboard's
-   **Settings** (gear icon). See section 9.
+5. Agents can run on any provider (OpenAI, Anthropic, Gemini, Ollama, ...). Credentials
+   and the default model are edited in the dashboard's **Settings** (gear icon). See section 9.
 
 ## 3. Folder layout
 
@@ -71,7 +71,7 @@ uv run --locked python -m app.catalog_cli new agent reviewer --title "Text revie
 | `category` | yes | groups items in the dashboard; reuse an existing one (`Text`, `Data`, `Web`, `Code`, `General`) before creating another | dashboard |
 | `version` | yes | SemVer `X.Y.Z`. Bump **major** when `Input`/`Output` breaks, **minor** for new optional fields or content changes, **patch** for fixes | dashboard |
 | `tags` | no | up to 6 lowercase words (`offline`, `llm`, `text`) | dashboard search |
-| `requires` | no | settings the item needs (e.g. `["OPENAI_API_KEY"]`) | warning in dashboard, run is blocked while missing |
+| `requires` | no | extra settings the item needs beyond the model provider's key, which is checked automatically | warning in dashboard, run is blocked while missing |
 | `channels` | yes | subset of `["api", "cli", "mcp"]` where the item **may** be published | dashboard, filters |
 | `[[examples]]` | yes (≥ 1) | `title`, `input` and optionally `output` | dashboard (Run button), CLI `--example`, tests |
 
@@ -101,7 +101,7 @@ async def run(request: Input) -> Output:
 - Use Pydantic constraints (`min_length`, `ge`, `Literal`, ...) instead of manual checks.
 - Field names in `snake_case`.
 - The handler is an **adapter**. Tools: logic in pure functions, testable without
-  network. Agents: behavior in the `.md` prompt; the handler only calls `GPTAgent`.
+  network. Agents: behavior in the `.md` prompt; the handler only calls `create_agent()` (never `GPTAgent` directly, so any provider works).
 - Do not read secrets directly or write files outside the item. Declare required
   settings in `requires`.
 - Input errors are handled by Pydantic. For other failures, raise exceptions; the
@@ -110,7 +110,8 @@ async def run(request: Input) -> Output:
 ## 6. Agent prompt (`app/assets/agents/<id>.md`)
 
 Follow the existing format (front matter + `# INPUT`, `# OUTPUT`, `# INSTRUCTIONS`, `# KNOWLEDGE`).
-`GPTAgent` appends `goal`, `backstory` and **every** section to the model instructions.
+The agent appends `goal`, `backstory` and **every** section to the model instructions.
+Optionally pin a model with `model: provider:model` in the front matter (see section 9).
 
 - `id` in the front matter equals the item id; `name` equals the `title`.
 - `# OUTPUT` reproduces the handler's `Output` class.
@@ -140,21 +141,51 @@ The dashboard is built only from the manifest and the contract:
   `description`s) and the examples with a **Run** button.
 - Use distinct icons within a category; no jargon in descriptions.
 
-## 9. Settings and models
+## 9. Providers, models and settings
 
-The gear icon opens **Settings**, which reads and writes the project's `.env`
-(path can be overridden with `CATALOG_ENV_FILE`):
+Agents are provider-agnostic. A **model reference** names the provider and the model:
 
-| Group | Keys |
+```
+openai:gpt-4.1-mini        anthropic:claude-sonnet-5-5     gemini:gemini-2.5-flash
+deepseek:deepseek-chat     mistral:mistral-large-latest    groq:llama-3.3-70b-versatile
+openrouter:openai/gpt-4.1-mini                             ollama:llama3.2:3b
+lmstudio:local-model       local:<model>  (any other OpenAI-compatible server)
+```
+
+Everything after the first `:` is the model name, so `ollama:llama3.2:3b` works.
+A reference without a known prefix uses the default provider.
+
+**Which model an agent uses** (first match wins):
+
+1. The model chosen for that agent in the dashboard (side panel → **Model**).
+2. `model:` in the agent's prompt front matter (`app/assets/agents/<id>.md`).
+3. The **Default model** setting (`DEFAULT_MODEL`), which falls back to `openai:<OPENAI_MODEL_NAME>`.
+
+**How it works.** Agent handlers call `create_agent()` from
+`app/orchestration/providers.py`, never a specific wrapper. OpenAI runs through the
+Responses API with native structured output; every other provider runs through
+its OpenAI-compatible Chat Completions endpoint with the `Output` JSON schema in
+the instructions, so any compatible server works. Provider presets (base URL,
+key setting, example models) live in `PROVIDERS` in the same file.
+
+**Settings** (gear icon) reads and writes the project's `.env` (path can be
+overridden with `CATALOG_ENV_FILE`):
+
+| Section | Keys |
 |---|---|
-| OpenAI | `OPENAI_API_KEY`, `OPENAI_MODEL_NAME`, `OPENAI_SANDBOX_MODEL_NAME`, `OPENAI_DECISION_MODEL_NAME` |
-| Local or compatible provider | `LOCAL_BASE_URL`, `LOCAL_MODEL_NAME`, `LOCAL_API_KEY`, `LOCAL_DISABLE_TRACING` |
+| Default model | `DEFAULT_MODEL` |
+| Providers | one section per provider with its API key (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `LOCAL_API_KEY`) or server address (`OLLAMA_BASE_URL`, `LMSTUDIO_BASE_URL`, `LOCAL_BASE_URL`), plus **Test connection**, which lists the provider's models |
+| OpenAI extras | `OPENAI_MODEL_NAME`, `OPENAI_SANDBOX_MODEL_NAME`, `OPENAI_DECISION_MODEL_NAME` (used when wrappers are called directly in code) |
+| Advanced | `LOCAL_DISABLE_TRACING` |
 
 - API keys are write-only: the API (`GET /api/settings`) returns only a masked hint.
-- Empty values fall back to the defaults in `app/orchestration/config.py`.
+- The key of the agent's provider is checked automatically: the dashboard warns and
+  runs are blocked while it is missing. Do not list it in `requires`.
 - Changes apply to new runs in the dashboard/API process immediately. Restart a
   separately running MCP server so it picks up changed values.
-- An item that needs a new setting must add it to `app/settings.py` (`FIELDS`) and to `env-example`.
+- **Adding a provider:** if it has an OpenAI-compatible endpoint, add one `Provider(...)`
+  entry to `PROVIDERS` and its key to `env-example`; Settings and the dashboard pick it up.
+  Otherwise use the `local` provider with its base URL.
 
 ## 10. Checklist before publishing
 
@@ -168,4 +199,4 @@ uv run --locked python -m app.catalog_cli run <id> --example 1
 - [ ] Examples run from the CLI and from the dashboard's **Run** button.
 - [ ] README has the six sections, in English.
 - [ ] `version` bumped if `Input`/`Output` changed.
-- [ ] Agents: prompt reviewed and `requires` lists the needed keys.
+- [ ] Agents: prompt reviewed, handler uses `create_agent()`, and the example was run with at least one provider.

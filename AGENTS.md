@@ -15,8 +15,9 @@ When creating or changing any item in `app/agents/` or `app/tools/`, follow
 5. `item.toml` has at least one `[[examples]]`; tools include the expected `output`.
 6. When `Input`/`Output` changes, update the examples, the README, the prompt's
    `# OUTPUT` section (agents) and bump `version` (SemVer).
-7. Never hard-code API keys. Declare required settings in `requires`; new settings go in
-   `app/settings.py` and `env-example`.
+7. Agent handlers build the agent with `create_agent()` from `app/orchestration/providers.py`,
+   never with a specific wrapper, so any provider works. Never hard-code API keys or providers;
+   new providers go in `PROVIDERS` and `env-example`.
 8. Before finishing, run and keep passing:
    - `uv run --locked python -m app.catalog_cli check`
    - `uv run --locked python -m unittest app.tests.test_catalog -v`
