@@ -10,11 +10,11 @@ from app.catalog import (
     ROOT,
     ItemError,
     activation,
+    apply_bulk,
     check,
     configured_channels,
     discover,
     execute,
-    set_active,
 )
 
 TEMPLATES = ROOT / "templates" / "catalog"
@@ -49,12 +49,18 @@ def main():
     new.add_argument("type", choices=("agent", "tool"))
     new.add_argument("id", help="snake_case identifier, same as the folder name")
     new.add_argument("--title", required=True, help="Name shown in the dashboard (up to 40 characters)")
-    for name in ("run", "enable", "disable"):
-        command = commands.add_parser(name)
-        command.add_argument("id")
-        if name == "run":
-            command.add_argument("--input", help="JSON object, or - to read stdin")
-            command.add_argument("--example", type=int, help="Run example N (starting at 1) from item.toml")
+    run = commands.add_parser("run", help="Run an item")
+    run.add_argument("id")
+    run.add_argument("--input", help="JSON object, or - to read stdin")
+    run.add_argument("--example", type=int, help="Run example N (starting at 1) from item.toml")
+    for name, verb in (("enable", "Enable"), ("disable", "Disable")):
+        command = commands.add_parser(
+            name, help=f"{verb} items, or turn a channel {'on' if name == 'enable' else 'off'} for them")
+        command.add_argument("ids", nargs="*", metavar="id", help="Item ids (or use --all / --type)")
+        command.add_argument("--all", action="store_true", help="Every item")
+        command.add_argument("--type", choices=("agent", "tool"), help="Every item of this type")
+        command.add_argument("--channel", choices=("api", "cli", "mcp"),
+                             help=f"{verb} this channel instead of the item itself")
     args = parser.parse_args()
 
     if args.command == "new":
@@ -73,7 +79,7 @@ def main():
         for item in items.values():
             problems = check(item)
             failed |= bool(problems)
-            print(("FALHA " if problems else "OK    ") + item.id)
+            print(("FAIL  " if problems else "OK    ") + item.id)
             for problem in problems:
                 print("  - " + problem)
         sys.exit(1 if failed else 0)
@@ -88,6 +94,26 @@ def main():
             )
             for item in items.values()
         ]
+    elif args.command in ("enable", "disable"):
+        if args.ids and (args.all or args.type):
+            parser.error("Give item ids, or --all / --type, not both.")
+        if args.all or args.type:
+            selected = [item for item in items.values() if not args.type or item.type == args.type]
+        elif args.ids:
+            unknown = [item_id for item_id in args.ids if item_id not in items]
+            if unknown:
+                parser.error("Unknown item: " + ", ".join(unknown))
+            selected = [items[item_id] for item_id in dict.fromkeys(args.ids)]
+        else:
+            parser.error("Give one or more item ids, --all or --type.")
+        on = args.command == "enable"
+        if args.channel:
+            result = apply_bulk(selected, enable_channels={args.channel} if on else set(),
+                                disable_channels=set() if on else {args.channel})
+        else:
+            result = apply_bulk(selected, active=on)
+        if len(args.ids) == 1 and not (args.all or args.type):
+            result = result[0]
     else:
         item = items.get(args.id)
         if item is None:
@@ -109,10 +135,6 @@ def main():
                 parser.error(str(exc))
             except Exception as exc:
                 parser.exit(1, f"Execution failed ({type(exc).__name__}).\n")
-        else:
-            active = args.command == "enable"
-            set_active(item.id, active)
-            result = {"id": item.id, "active": active}
     print(json.dumps(result, ensure_ascii=True, indent=2))
 
 

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add bulk actions: an **Actions** section in the Filters sidebar enables or
+  disables all items shown, or turns a channel on or off for them, with Undo;
+  `PATCH /api/catalog` applies the same changes to several items (or all), and the
+  CLI's `enable`/`disable` accept several ids, `--all`, `--type` and `--channel`.
+- `catalog check` prints `FAIL` instead of the leftover Portuguese `FALHA`.
+- Move search and filters into a left **Filters** sidebar: docked by default,
+  collapsible to an icon rail with an active-filter badge (the choice is
+  remembered), a drawer on small screens, a "Clear filters" button and `/` to
+  search. The Category filter is always shown, listing every category with its count.
 - Add an **MCP server** section to Settings: transport (stdio, streamable-http,
   sse), host and port, with the exact command or URL clients should use. The
   catalog MCP server now loads `.env`, so these settings apply to

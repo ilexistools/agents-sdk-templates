@@ -157,8 +157,8 @@ The application includes a catalog: every folder in `app/agents/` or `app/tools/
 
 | Channel | How to use it |
 |---|---|
-| Dashboard | http://127.0.0.1:8787: filter by type, category, channel and status; open an item to see its contract, choose its model, run its examples and enable or disable it |
-| REST API | `GET /api/catalog`, `GET /api/catalog/{id}`, `POST /api/catalog/{id}/run`, `PATCH /api/catalog/{id}` (`{"active": false}`), `PATCH /api/catalog/{id}/channels`, `PATCH /api/catalog/{id}/model` |
+| Dashboard | http://127.0.0.1:8787: search and filter by type, category, channel and status in the left **Filters** sidebar (collapse it to an icon rail with its dock button; press `/` to search); open an item to see its contract, choose its model, run its examples and enable or disable it |
+| REST API | `GET /api/catalog`, `GET /api/catalog/{id}`, `POST /api/catalog/{id}/run`, `PATCH /api/catalog/{id}` (`{"active": false}`), `PATCH /api/catalog/{id}/channels`, `PATCH /api/catalog/{id}/model`, and `PATCH /api/catalog` for several items at once (`{"ids": [...], "active": true}`, `{"disable_channels": ["mcp"]}`; omit `ids` for every item) |
 | CLI | `uv run --locked python -m app.catalog_cli list \| check \| new \| run \| enable \| disable` |
 | MCP | `uv run --locked python -m app.catalog_mcp` (stdio by default; see below) |
 
@@ -170,7 +170,12 @@ uv run --locked python -m app.catalog_cli run word_count --example 1
 '{"text":"one two"}' | uv run --locked python -m app.catalog_cli run word_count --input -
 uv run --locked python -m app.catalog_cli disable word_count
 uv run --locked python -m app.catalog_cli enable word_count
+uv run --locked python -m app.catalog_cli disable --all                  # every item
+uv run --locked python -m app.catalog_cli enable --type tool             # every tool
+uv run --locked python -m app.catalog_cli disable --channel mcp --all    # hide everything from MCP
 ```
+
+In the dashboard, the **Actions** section of the Filters sidebar does the same for the items currently shown: **Enable all**, **Disable all**, and turn a channel **On** or **Off**. Each action can be undone from the message that follows it.
 
 **Reference items.** `word_count` is a deterministic tool that works offline. `summarizer` is an agent that takes `{"text": "..."}` and runs on the configured model. Each has a README explaining how it works: [word_count](app/tools/word_count/README.md), [summarizer](app/agents/summarizer/README.md).
 

@@ -127,6 +127,46 @@ class CatalogStandardTests(unittest.TestCase):
         response = client.post("/api/catalog/word_count/run", json=example["input"])
         self.assertEqual(response.json(), example["output"])
 
+    def test_bulk_actions(self):
+        from app.main import app
+
+        client = TestClient(app)
+        state = lambda: {i["id"]: (i["active"], tuple(i["channels"])) for i in client.get("/api/catalog").json()}
+        self.assertEqual(client.patch("/api/catalog", json={"active": False}).status_code, 200)
+        self.assertFalse(any(active for active, _ in state().values()))
+        response = client.patch("/api/catalog", json={"ids": ["word_count"], "active": True, "disable_channels": ["mcp"]})
+        self.assertEqual(response.json(), [{"id": "word_count", "active": True, "channels": ["api", "cli"]}])
+        self.assertEqual(state()["summarizer"], (False, ("api", "cli", "mcp")))
+        client.patch("/api/catalog", json={"enable_channels": ["mcp"]})
+        self.assertEqual(state()["word_count"][1], ("api", "cli", "mcp"))
+        for body, code in (({}, 422), ({"ids": ["nope"], "active": True}, 404),
+                           ({"enable_channels": ["mcp"], "disable_channels": ["mcp"]}, 422),
+                           ({"enable_channels": ["email"]}, 422)):
+            with self.subTest(body=body):
+                self.assertEqual(client.patch("/api/catalog", json=body).status_code, code)
+
+    def test_cli_bulk_commands(self):
+        import io
+        import json as jsonlib
+        import sys
+        from contextlib import redirect_stdout
+
+        from app import catalog_cli
+
+        def cli(*args):
+            output = io.StringIO()
+            with patch.object(sys, "argv", ["catalog", *args]), redirect_stdout(output):
+                catalog_cli.main()
+            return jsonlib.loads(output.getvalue())
+
+        self.assertEqual({r["id"] for r in cli("disable", "--all")}, {"summarizer", "word_count"})
+        self.assertEqual(cli("enable", "word_count")["active"], True)
+        self.assertEqual(cli("disable", "--type", "tool", "--channel", "mcp"),
+                         [{"id": "word_count", "active": True, "channels": ["api", "cli"]}])
+        with self.assertRaises(SystemExit):
+            with redirect_stdout(io.StringIO()), patch.object(sys, "stderr", io.StringIO()):
+                cli("enable")
+
     def test_disabled_channel_is_hidden_from_mcp(self):
         from app import catalog_mcp
         from app.catalog import set_channels

@@ -26,7 +26,37 @@
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-main{max-width:980px;margin:auto;padding:32px clamp(16px,4vw,40px) 64px}
+.layout{display:grid;grid-template-columns:auto minmax(0,1fr);min-height:100dvh}
+main{width:100%;max-width:1000px;margin:0 auto;padding:32px clamp(16px,4vw,40px) 64px}
+.title-block{display:flex;align-items:center;gap:12px}
+.icon-button.filters-open{display:none;position:relative}
+
+/* Filters sidebar (docked on the left; collapses to a rail) */
+.filters{position:sticky;top:0;height:100dvh;width:272px;display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--border);transition:width .2s ease;z-index:3}
+.filters-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:18px 14px 12px 18px}
+.filters-title{margin:0;font-size:13px;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3)}
+.dock-button,.rail-button{display:grid;place-items:center;width:34px;height:34px;padding:0;border:1px solid transparent;border-radius:9px;background:none;color:var(--text-3);cursor:pointer;position:relative}
+.dock-button:hover,.rail-button:hover{background:var(--surface-2);border-color:var(--border);color:var(--text)}
+.dock-button svg,.rail-button svg,.filters-open svg{width:18px;height:18px}
+.dock-arrow{transition:transform .2s ease;transform-origin:14px 12px}
+.filters-body{flex:1;overflow:auto;padding:0 18px 24px;display:flex;flex-direction:column;gap:18px}
+.filters-rail{display:none;flex-direction:column;align-items:center;gap:6px;padding:4px 0}
+.filter-group{display:grid;gap:8px}
+.filter-group h3{margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3)}
+.filter-group select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font-size:13px;cursor:pointer}
+.filter-group .segmented{display:flex}
+.filter-group .segmented button{flex:1}
+.filter-count{position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fff;font-size:10px;line-height:16px;font-weight:700;text-align:center}
+.filter-count[hidden]{display:none}
+.clear-filters{align-self:flex-start}
+.search-key{position:absolute;right:9px;top:50%;translate:0 -50%;padding:1px 6px;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text-3);background:var(--surface);pointer-events:none}
+.search input:focus + .search-key,.search input:not(:placeholder-shown) + .search-key{display:none}
+.layout.collapsed .filters{width:60px}
+.layout.collapsed .filters-head{justify-content:center;padding:18px 0 12px}
+.layout.collapsed .filters-title,.layout.collapsed .filters-body{display:none}
+.layout.collapsed .filters-rail{display:flex}
+.layout.collapsed .dock-arrow{transform:scaleX(-1)}
+.filters-backdrop{display:none}
 
 /* Header */
 .heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
@@ -95,19 +125,27 @@ dialog.settings form{display:flex;flex-direction:column;max-height:calc(100dvh -
 .stat span{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em}
 
 /* Toolbar */
-.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
-.search{position:relative;flex:1 1 240px}
+.search{position:relative;display:block}
 .search svg{position:absolute;left:11px;top:50%;translate:0 -50%;width:16px;height:16px;color:var(--text-3);pointer-events:none}
 .search input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2)}
 .search input:focus{background:var(--surface);border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
 .segmented{display:inline-flex;padding:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px}
 .segmented button{border:0;background:none;padding:5px 12px;border-radius:7px;font-size:13px;color:var(--text-2);cursor:pointer}
 .segmented button[aria-pressed=true]{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow)}
-.toolbar select{padding:7px 30px 7px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font-size:13px;cursor:pointer}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 #feedback{margin:0 0 12px;padding:9px 12px;border-radius:9px;background:var(--accent-soft);color:var(--accent-text);font-size:13px}
 #feedback:empty{display:none}
+#feedback{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#feedback .ghost{padding:4px 10px;font-weight:600;color:var(--accent-text);border-color:var(--accent)}
+.bulk{padding-top:16px;border-top:1px solid var(--border)}
+.bulk-scope{font-weight:500;letter-spacing:0;text-transform:none;color:var(--text-3)}
+.bulk-row{display:flex;gap:6px}
+.bulk-row>.ghost{flex:1;padding:8px 10px;font-size:13px}
+.bulk-row select{flex:1;min-width:0;padding:7px 8px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font-size:13px}
+.bulk-row:last-of-type>.ghost{flex:0 0 auto}
+.bulk-help{font-size:12px;color:var(--text-3)}
+.bulk .ghost:disabled{opacity:.5;cursor:not-allowed}
 
 /* List */
 #cards{display:grid;gap:8px}
@@ -162,9 +200,9 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
 .group-title{display:flex;align-items:baseline;gap:8px;margin:20px 2px 4px;font-size:15px;font-weight:650;letter-spacing:-.01em;color:var(--text)}
 .group-title:first-child{margin-top:0}
 .group-title span{font-size:12px;font-weight:500;color:var(--text-3)}
-.categories{display:flex;gap:6px;margin:0 0 16px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
-.categories[hidden]{display:none}
-.category-chip{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 8px 6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface);font-size:13px;color:var(--text-2);cursor:pointer;transition:background .15s,border-color .15s}
+.categories{display:grid;gap:4px}
+.filter-group[hidden]{display:none}
+.category-chip{display:flex;align-items:center;justify-content:space-between;gap:7px;width:100%;padding:7px 8px 7px 12px;border:1px solid var(--border);border-radius:9px;text-align:left;background:var(--surface);font-size:13px;color:var(--text-2);cursor:pointer;transition:background .15s,border-color .15s}
 .category-chip:hover{border-color:var(--border-strong)}
 .category-chip span{min-width:20px;padding:1px 6px;border-radius:20px;background:var(--surface-2);font-size:11px;font-weight:600;text-align:center;color:var(--text-3)}
 .category-chip[aria-pressed=true]{background:var(--text);border-color:var(--text);color:var(--surface);font-weight:600}
@@ -188,19 +226,88 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
 .run{padding:5px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
 .run:disabled{opacity:.5;cursor:not-allowed}
 
+@media (max-width:860px){
+  .layout,.layout.collapsed{grid-template-columns:minmax(0,1fr)}
+  .filters,.layout.collapsed .filters{position:fixed;left:0;top:0;width:min(300px,86vw);transform:translateX(-102%);transition:transform .24s ease;box-shadow:var(--shadow-lg)}
+  .layout.collapsed .filters-title,.layout.collapsed .filters-body{display:flex}
+  .layout.collapsed .filters-head{justify-content:space-between;padding:18px 14px 12px 18px}
+  .layout.collapsed .filters-rail{display:none}
+  .layout.drawer-open .filters{transform:none}
+  .filters-backdrop{position:fixed;inset:0;background:#0b122080;z-index:2;opacity:0;visibility:hidden;transition:opacity .2s}
+  .layout.drawer-open .filters-backdrop{display:block;opacity:1;visibility:visible}
+  .icon-button.filters-open{display:grid}
+  .search-key{display:none}
+  .dock-arrow{transform:none!important}
+}
 @media (max-width:640px){
   main{padding-top:20px}
   .heading{flex-direction:column;align-items:flex-start}
-  .toolbar>*{flex:1 1 auto}
   article{grid-template-columns:40px minmax(0,1fr);row-gap:10px;padding:12px}
   .icon{width:40px;height:40px}
   .meta{grid-column:2;justify-content:space-between}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
+<div class="layout" id="layout">
+<aside class="filters" id="filters" aria-label="Filters">
+  <div class="filters-head">
+    <h2 class="filters-title">Filters</h2>
+    <button type="button" class="dock-button" id="filters-dock" aria-controls="filters" aria-expanded="true" title="Collapse filters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path class="dock-arrow" d="m15 10-2 2 2 2"/></svg><span class="sr-only">Collapse filters</span></button>
+  </div>
+  <div class="filters-rail" aria-hidden="true">
+    <button type="button" class="rail-button" data-expand="search" tabindex="-1" title="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+    <button type="button" class="rail-button" data-expand="filters" tabindex="-1" title="Filters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></svg><b class="filter-count" id="filters-count-rail" hidden></b></button>
+  </div>
+  <div class="filters-body" role="search">
+    <label class="search"><span class="sr-only">Search</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="search" placeholder="Search…" autocomplete="off">
+      <kbd class="search-key" title="Press / to search">/</kbd>
+    </label>
+    <section class="filter-group">
+      <h3>Type</h3>
+      <div class="segmented" role="group" aria-label="Type" id="kind">
+        <button type="button" data-value="" aria-pressed="true">All</button>
+        <button type="button" data-value="agent" aria-pressed="false">Agents</button>
+        <button type="button" data-value="tool" aria-pressed="false">Tools</button>
+      </div>
+    </section>
+    <section class="filter-group" id="category-section" hidden>
+      <h3>Category</h3>
+      <div class="categories" id="categories" role="group" aria-label="Category"></div>
+    </section>
+    <section class="filter-group">
+      <h3><label for="channel">Channel</label></h3>
+      <select id="channel"><option value="">All channels</option><option>API</option><option>CLI</option><option>MCP</option></select>
+    </section>
+    <section class="filter-group">
+      <h3><label for="status">Status</label></h3>
+      <select id="status"><option value="">Any status</option><option value="true">Active</option><option value="false">Inactive</option></select>
+    </section>
+    <button type="button" class="ghost clear-filters" id="clear-filters" hidden>Clear filters</button>
+    <section class="filter-group bulk" id="bulk" aria-labelledby="bulk-title">
+      <h3 id="bulk-title">Actions <span id="bulk-scope" class="bulk-scope"></span></h3>
+      <div class="bulk-row">
+        <button type="button" class="ghost" data-bulk="enable">Enable all</button>
+        <button type="button" class="ghost" data-bulk="disable">Disable all</button>
+      </div>
+      <div class="bulk-row">
+        <label class="sr-only" for="bulk-channel">Channel</label>
+        <select id="bulk-channel"><option value="api">API</option><option value="cli">CLI</option><option value="mcp">MCP</option></select>
+        <button type="button" class="ghost" data-bulk="channel-on" title="Turn this channel on for the items shown">On</button>
+        <button type="button" class="ghost" data-bulk="channel-off" title="Turn this channel off for the items shown">Off</button>
+      </div>
+      <small class="bulk-help">Applies to the items shown by the filters above.</small>
+    </section>
+  </div>
+</aside>
+<div class="filters-backdrop" id="filters-backdrop"></div>
 <main>
 <div class="heading">
-  <div><h1>Agents &amp; Tools</h1><p class="subtitle">Manage what is exposed through the API, CLI and MCP.</p></div>
+  <div class="title-block">
+    <button type="button" class="icon-button filters-open" id="filters-open" aria-controls="filters" aria-expanded="false" title="Filters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></svg><span class="sr-only">Filters</span><b class="filter-count" id="filters-count-mobile" hidden></b></button>
+    <div><h1>Agents &amp; Tools</h1><p class="subtitle">Manage what is exposed through the API, CLI and MCP.</p></div>
+  </div>
   <div class="head-side">
     <div class="stats" id="stats"></div>
     <button type="button" class="icon-button" id="open-settings" aria-label="Settings" title="Settings">
@@ -208,23 +315,10 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
     </button>
   </div>
 </div>
-<div class="toolbar" role="search">
-  <label class="search"><span class="sr-only">Search</span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-    <input id="search" type="search" placeholder="Search by name or description" autocomplete="off">
-  </label>
-  <div class="segmented" role="group" aria-label="Type" id="kind">
-    <button type="button" data-value="" aria-pressed="true">All</button>
-    <button type="button" data-value="agent" aria-pressed="false">Agents</button>
-    <button type="button" data-value="tool" aria-pressed="false">Tools</button>
-  </div>
-  <label><span class="sr-only">Channel</span><select id="channel"><option value="">All channels</option><option>API</option><option>CLI</option><option>MCP</option></select></label>
-  <label><span class="sr-only">Status</span><select id="status"><option value="">Any status</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
-</div>
-<div class="categories" id="categories" role="group" aria-label="Category" hidden></div>
 <p id="feedback" role="status"></p>
 <section id="cards" aria-label="Catalog items"></section>
 </main>
+</div>
 <div class="backdrop" id="backdrop"></div>
 <aside class="sidebar" id="sidebar" role="dialog" aria-modal="true" aria-labelledby="side-title" aria-hidden="true"></aside>
 <datalist id="model-suggestions"></datalist>
@@ -278,13 +372,14 @@ function renderStats() {
 function renderCategories(filtered) {
   const bar = byId('categories');
   const all = [...new Set(items.map(item => item.category))].sort((a, b) => a.localeCompare(b));
-  if (all.length < 2) {
+  const section = byId('category-section');
+  if (!all.length) {
     category = '';
-    bar.hidden = true;
+    section.hidden = true;
     return;
   }
   if (category && !all.includes(category)) category = '';
-  bar.hidden = false;
+  section.hidden = false;
   const chip = (value, label, count) => {
     const button = node('button', label, 'category-chip');
     button.type = 'button';
@@ -308,7 +403,11 @@ function render() {
     && (!status || String(item.active) === status));
   renderStats();
   renderCategories(filtered);
+  renderFilterState();
   const visible = filtered.filter(item => !category || item.category === category);
+  shown = visible;
+  byId('bulk-scope').textContent = '· ' + visible.length + ' shown';
+  for (const button of document.querySelectorAll('[data-bulk]')) button.disabled = !visible.length;
   const groups = new Map();
   for (const item of [...visible].sort((a, b) => a.category.localeCompare(b.category) || a.title.localeCompare(b.title))) {
     if (!groups.has(item.category)) groups.set(item.category, []);
@@ -589,6 +688,140 @@ async function setActive(item, button) {
   }
 }
 for (const id of ['search', 'channel', 'status']) byId(id).addEventListener('input', render);
+
+// ----- Bulk actions on the items shown, with undo -----
+let shown = [];
+function showFeedback(text, undo) {
+  feedback.replaceChildren(node('span', text));
+  if (undo) {
+    const button = node('button', 'Undo', 'ghost');
+    button.type = 'button';
+    button.onclick = undo;
+    feedback.append(button);
+  }
+}
+function applyStates(states) {
+  for (const state of states) {
+    const item = items.find(entry => entry.id === state.id);
+    if (item) { item.active = state.active; item.channels = state.channels; }
+  }
+  render();
+  if (selected) drawSidebar();
+}
+async function bulk(body, describe) {
+  const targets = shown.map(item => ({id: item.id, active: item.active, channels: [...item.channels]}));
+  if (!targets.length) return;
+  const buttons = [...document.querySelectorAll('[data-bulk]')];
+  buttons.forEach(button => button.disabled = true);
+  try {
+    const response = await fetch('/api/catalog', {
+      method: 'PATCH', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ids: targets.map(target => target.id), ...body})
+    });
+    const result = await response.json();
+    if (!response.ok) throw Error(typeof result.detail === 'string' ? result.detail : 'Could not apply the action.');
+    applyStates(result);
+    const noun = targets.length === 1 ? '1 item' : targets.length + ' items';
+    showFeedback(describe(noun), () => restore(targets));
+  } catch (error) {
+    showFeedback(error.message);
+    render();
+  }
+}
+async function restore(previous) {
+  try {
+    for (const state of previous) {
+      const id = encodeURIComponent(state.id);
+      const headers = {'Content-Type': 'application/json'};
+      const status = await fetch('/api/catalog/' + id, {method: 'PATCH', headers, body: JSON.stringify({active: state.active})});
+      const channels = await fetch('/api/catalog/' + id + '/channels', {method: 'PATCH', headers, body: JSON.stringify({channels: state.channels})});
+      if (!status.ok || !channels.ok) throw Error();
+    }
+    applyStates(previous);
+    showFeedback('Undone.');
+  } catch {
+    showFeedback('Could not undo every change. Reload the page to see the current state.');
+  }
+}
+byId('bulk').addEventListener('click', event => {
+  const button = event.target.closest('[data-bulk]');
+  if (!button) return;
+  const channel = byId('bulk-channel').value;
+  const label = channel.toUpperCase();
+  ({
+    'enable': () => bulk({active: true}, noun => 'Enabled ' + noun + '.'),
+    'disable': () => bulk({active: false}, noun => 'Disabled ' + noun + '.'),
+    'channel-on': () => bulk({enable_channels: [channel]}, noun => label + ' turned on for ' + noun + '.'),
+    'channel-off': () => bulk({disable_channels: [channel]}, noun => label + ' turned off for ' + noun + '.'),
+  })[button.dataset.bulk]();
+});
+
+// ----- Filters sidebar: docked, collapsible to a rail, a drawer on small screens -----
+const layout = byId('layout');
+const mobileFilters = window.matchMedia('(max-width: 860px)');
+function storedPreference() {
+  try { return localStorage.getItem('catalog.filters'); } catch { return null; }
+}
+function setCollapsed(collapsed, remember = true) {
+  layout.classList.toggle('collapsed', collapsed);
+  const dock = byId('filters-dock');
+  dock.setAttribute('aria-expanded', String(!collapsed));
+  dock.title = collapsed ? 'Expand filters' : 'Collapse filters';
+  dock.querySelector('.sr-only').textContent = dock.title;
+  for (const button of document.querySelectorAll('.rail-button')) button.tabIndex = collapsed ? 0 : -1;
+  document.querySelector('.filters-rail').setAttribute('aria-hidden', String(!collapsed));
+  if (remember) { try { localStorage.setItem('catalog.filters', collapsed ? 'collapsed' : 'expanded'); } catch {} }
+}
+function setDrawer(open) {
+  layout.classList.toggle('drawer-open', open);
+  byId('filters-open').setAttribute('aria-expanded', String(open));
+  if (open) byId('search').focus();
+}
+function activeFilterCount() {
+  return [byId('search').value.trim(), kind, category, byId('channel').value, byId('status').value].filter(Boolean).length;
+}
+function renderFilterState() {
+  const count = activeFilterCount();
+  for (const id of ['filters-count-rail', 'filters-count-mobile']) {
+    const badge = byId(id);
+    badge.hidden = !count;
+    badge.textContent = count;
+  }
+  byId('clear-filters').hidden = !count;
+}
+function expandFilters(focusSearch) {
+  if (mobileFilters.matches) setDrawer(true);
+  else setCollapsed(false);
+  if (focusSearch) byId('search').focus();
+}
+byId('filters-dock').onclick = () => {
+  if (mobileFilters.matches) setDrawer(false);
+  else setCollapsed(!layout.classList.contains('collapsed'));
+};
+for (const button of document.querySelectorAll('.rail-button')) {
+  button.onclick = () => expandFilters(button.dataset.expand === 'search');
+}
+byId('filters-open').onclick = () => setDrawer(!layout.classList.contains('drawer-open'));
+byId('filters-backdrop').onclick = () => setDrawer(false);
+byId('clear-filters').onclick = () => {
+  byId('search').value = '';
+  byId('channel').value = '';
+  byId('status').value = '';
+  kind = '';
+  category = '';
+  for (const option of byId('kind').children) option.setAttribute('aria-pressed', String(option.dataset.value === ''));
+  render();
+  byId('search').focus();
+};
+document.addEventListener('keydown', event => {
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) || document.activeElement.isContentEditable;
+  if (event.key === '/' && !typing && !settingsDialog.open && !sidebar.classList.contains('open')) {
+    event.preventDefault();
+    expandFilters(true);
+  }
+  if (event.key === 'Escape' && layout.classList.contains('drawer-open')) setDrawer(false);
+});
+setCollapsed(storedPreference() === 'collapsed', false);
 byId('kind').addEventListener('click', event => {
   const button = event.target.closest('button');
   if (!button) return;

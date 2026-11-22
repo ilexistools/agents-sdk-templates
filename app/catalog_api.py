@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
@@ -9,6 +10,7 @@ from app.catalog import (
     ItemError,
     Unavailable,
     activation,
+    apply_bulk,
     configured_channels,
     describe,
     discover,
@@ -62,6 +64,33 @@ def catalog():
         )
         for item in discover().values()
     ]
+
+
+class BulkRequest(BaseModel):
+    ids: list[str] | None = None  # None means every item
+    active: bool | None = None
+    enable_channels: set[Literal["api", "cli", "mcp"]] = set()
+    disable_channels: set[Literal["api", "cli", "mcp"]] = set()
+
+
+@router.patch("/api/catalog")
+def change_many(request: BulkRequest):
+    """Enable/disable several items or turn a channel on/off for them in one request."""
+    if request.active is None and not request.enable_channels and not request.disable_channels:
+        raise HTTPException(422, "Nothing to change: set active, enable_channels or disable_channels.")
+    if request.enable_channels & request.disable_channels:
+        raise HTTPException(422, "A channel cannot be enabled and disabled at the same time.")
+    items = discover()
+    ids = list(items) if request.ids is None else list(dict.fromkeys(request.ids))
+    unknown = [item_id for item_id in ids if item_id not in items]
+    if unknown:
+        raise HTTPException(404, "Unknown item: " + ", ".join(unknown))
+    return apply_bulk(
+        [items[item_id] for item_id in ids],
+        active=request.active,
+        enable_channels=request.enable_channels,
+        disable_channels=request.disable_channels,
+    )
 
 
 @router.get("/api/catalog/{item_id}")

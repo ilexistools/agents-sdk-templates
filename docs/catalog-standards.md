@@ -137,9 +137,9 @@ it is generated from `handler.py` automatically.
 
 The dashboard is built only from the manifest and the contract:
 
-- `category` defines the group header ("Text · 2 items"); with two or more categories,
-  a row of category chips above the list filters by category. Keep the number of
-  categories small and reuse existing ones.
+- `category` defines the group header ("Text · 2 items") and an entry in the
+  **Category** filter of the sidebar, with its count. Keep the number of categories small
+  and reuse existing ones. `tags`, `id` and `category` are matched by the search box.
 - `title`, `icon`, `description`, `type`, channels and status make up the list row.
 - The side panel shows version, tags, missing settings, the enabled switch, channels,
   the **Model** picker (agents only), input/output fields (from the `description`s) and

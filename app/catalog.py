@@ -225,6 +225,32 @@ def set_model_choice(item: Item, model: str | None) -> None:
             db.execute("DELETE FROM item_models WHERE id = ?", (item.id,))
 
 
+def apply_bulk(
+    items: list[Item],
+    active: bool | None = None,
+    enable_channels: set[Channel] = frozenset(),
+    disable_channels: set[Channel] = frozenset(),
+) -> list[dict]:
+    """Enable/disable several items and turn channels on/off for them at once.
+
+    Channels an item does not support are ignored for that item. Returns the
+    resulting state of each item.
+    """
+    results = []
+    for item in items:
+        if active is not None:
+            set_active(item.id, active)
+        if enable_channels or disable_channels:
+            channels = (configured_channels(item) | (set(enable_channels) & item.channels)) - set(disable_channels)
+            set_channels(item, channels)
+        results.append({
+            "id": item.id,
+            "active": bool(activation().get(item.id, True)),
+            "channels": sorted(configured_channels(item)),
+        })
+    return results
+
+
 def is_available(item: Item, channel: Channel) -> bool:
     return channel in configured_channels(item) and bool(activation().get(item.id, True))
 

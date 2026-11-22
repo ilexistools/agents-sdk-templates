@@ -52,6 +52,7 @@ uv run --locked python -m app catalog new tool <id> --title "<Title>"
 uv run --locked python -m app catalog new agent <id> --title "<Title>"
 uv run --locked python -m app catalog check            # validate every item
 uv run --locked python -m app catalog run <id> --example 1
+uv run --locked python -m app catalog disable <id>... | --all | --type tool [--channel mcp]
 uv run --locked python -m unittest discover -s app/tests -v
 ```
 
