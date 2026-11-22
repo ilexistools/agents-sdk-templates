@@ -22,14 +22,23 @@ configuração de provedor e validação do carregamento.
 
 ## Decisões específicas do projeto
 
-- Escolha `GPT` para Responses API da OpenAI, `GPTAgent` para ferramentas e
-  handoffs, `GPTSandboxAgent` para execução em sandbox, `GPTLocal` ou
-  `GPTLocalAgent` para Chat Completions local ou de um provedor compatível.
+- Para agentes, prefira `create_agent` de `app/orchestration/providers.py`: ele
+  escolhe o provedor a partir de uma referência `provedor:modelo` (por exemplo
+  `anthropic:claude-sonnet-5-5` ou `ollama:llama3.2`) e devolve `GPTAgent` ou
+  `GPTLocalAgent`. Use os wrappers diretamente apenas quando precisar de um recurso
+  específico: `GPT` para Responses API da OpenAI, `GPTSandboxAgent` para sandbox,
+  `GPTLocal` para chamadas diretas a Chat Completions compatível.
+- Agentes publicados no catálogo (`app/agents/<id>/`) seguem também
+  `docs/catalog-standards.md` e a skill `catalog-create-item`.
 - O nome do arquivo determina a busca por `agent_id`; mantenha o campo `id`
   igual ao nome do arquivo sem `.md`.
 - Com `agent_id`, nome, papel, instruções, modelo e limite de tokens vêm do
-  Markdown. Os argumentos `model` e `max_tokens` não substituem esses campos.
-  Omita `model` no frontmatter para usar o fallback do wrapper/provedor.
+  Markdown. Em `GPTAgent`, `GPTLocalAgent` e `create_agent`, o argumento `model`
+  substitui o modelo do Markdown; `max_tokens` nunca é substituído. Em `GPT`,
+  `GPTLocal` e `GPTSandboxAgent`, os argumentos não substituem esses campos.
+  Omita `model` no frontmatter para usar o modelo padrão (`DEFAULT_MODEL`).
+- `model: provedor:modelo` no frontmatter só é entendido por `create_agent`;
+  com `GPTAgent(agent_id=...)` direto, a string inteira iria para a OpenAI.
 - As seções do Markdown viram instruções de texto. Declarar uma classe em
   `OUTPUT` não cria um modelo Python: defina a classe e passe `output_type`.
 - `max_tokens` ausente assume 2048; não deixe o campo vazio, pois o loader

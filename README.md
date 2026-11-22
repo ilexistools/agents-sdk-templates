@@ -1,6 +1,6 @@
 # OpenAI agents SDK templates
 
-A Python starter project for building typed model integrations, agent workflows and decision-based routing. Use OpenAI directly, connect an OpenAI-compatible local or hosted model, add tools through MCP, or experiment with sandbox execution and reusable skills.
+A Python starter project for building typed model integrations, agent workflows and decision-based routing. Run agents on OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Groq, OpenRouter, Ollama, LM Studio or any OpenAI-compatible server; publish them through a local dashboard, REST API, CLI and MCP server; add tools through MCP; or experiment with sandbox execution and reusable skills.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![Latest tag](https://img.shields.io/github/v/tag/ilexistools/agents-sdk-templates?label=version)](https://github.com/ilexistools/agents-sdk-templates/tags)
@@ -8,23 +8,26 @@ A Python starter project for building typed model integrations, agent workflows 
 
 The template keeps orchestration visible in ordinary Python: wrappers handle model calls, Pydantic models describe outputs, Markdown files define agents, and application code controls execution. It is intended for learning, prototyping and adapting these patterns to your own application.
 
-[Getting started](#getting-started) · [Wrapper reference](#wrapper-reference) · [Decisions](#decisions-and-routing) · [Development skills](#skills-for-coding-agents) · [Changelog](CHANGELOG.md)
+[Getting started](#getting-started) · [Catalog](#catalog-of-agents-and-tools) · [Providers and models](#providers-and-models) · [Wrapper reference](#wrapper-reference) · [Decisions](#decisions-and-routing) · [Development skills](#skills-for-coding-agents) · [Changelog](CHANGELOG.md)
 
 ## What you can build
 
+- **A catalog of agents and tools:** drop a folder into `app/agents/` or `app/tools/` and it appears in a local dashboard, the REST API, a CLI and an MCP server, with generated documentation and runnable examples.
 - **Typed model integrations:** extract or generate data with explicit Pydantic output contracts.
 - **Specialist workflows:** run mandatory processing stages, configure handoffs, or expose an agent as a tool.
 - **Decision-based triage:** classify requests, evaluate conditions and score inputs before selecting a specialist.
-- **Provider-compatible applications:** use OpenAI, local servers such as LM Studio and Ollama, or the DeepSeek hosted API.
+- **Provider-independent agents:** choose a model as `provider:model` (for example `anthropic:claude-sonnet-5-5` or `ollama:llama3.2`) without changing code.
 - **Tool-enabled agents:** connect Python functions and MCP servers to the Agents SDK wrappers.
 - **Sandbox experiments:** make task-specific skills available to an agent with a configured execution backend.
 - **HTTP integrations:** adapt the included FastAPI application and runnable endpoint examples.
 
-The repository includes executable examples, offline regression tests, four skills for coding agents and focused guides for [Decisions](docs/decisions.md) and [development skills](docs/development-skills.md).
+The repository includes executable examples, offline regression tests, five skills for coding agents and focused guides for the [catalog standards](docs/catalog-standards.md), [Decisions](docs/decisions.md) and [development skills](docs/development-skills.md).
 
 ## Contents
 
 - [Getting started](#getting-started)
+- [Catalog of agents and tools](#catalog-of-agents-and-tools)
+- [Providers and models](#providers-and-models)
 - [Wrapper reference](#wrapper-reference)
 - [Configuration](#configuration)
 - [Typed outputs and execution](#typed-outputs-and-execution)
@@ -66,17 +69,19 @@ Run the offline tests:
 uv run --locked python -m unittest discover -s app/tests -v
 ```
 
-Or start the sample HTTP application:
+Or start the application:
 
 ```bash
 uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open [the health endpoint](http://localhost:8000/health) or [the interactive API documentation](http://localhost:8000/docs). The default application returns sample data and does not call a model.
+Open [the catalog dashboard](http://localhost:8000/), [the health endpoint](http://localhost:8000/health) or [the interactive API documentation](http://localhost:8000/docs). The `word_count` tool runs offline from the dashboard; agents need a provider (next step).
 
 ### 3. Configure your provider
 
-Copy the environment template:
+**From the dashboard (simplest).** Click the gear icon to open **Settings**, paste the key of the provider you use (or the address of a local server such as Ollama), click **Test connection**, and set **Default model** as `provider:model`, for example `openai:gpt-4.1-mini` or `ollama:llama3.2`. Settings writes the values to `.env`.
+
+**By editing `.env`.** Copy the environment template:
 
 **macOS / Linux**
 
@@ -90,9 +95,9 @@ cp env-example .env
 Copy-Item env-example .env
 ```
 
-For OpenAI, replace `OPENAI_API_KEY` in `.env` with your own key. For a local server or DeepSeek, configure the `LOCAL_*` settings described below. `.env` is ignored by Git.
+Set `DEFAULT_MODEL` and the key of your provider (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, ...); see [Providers and models](#providers-and-models). `.env` is ignored by Git.
 
-A real OpenAI key is needed for OpenAI model calls, Decisions and the OpenAI sandbox examples. Local servers may accept placeholder keys; DeepSeek requires its own key. The offline tests and default FastAPI application do not require a provider key.
+A real OpenAI key is needed for the OpenAI-only wrappers (`GPT`, Decisions and the sandbox examples). Catalog agents run on whichever provider you choose; local servers need no key. The offline tests and the dashboard's offline tool do not require a provider key.
 
 ### 4. Make your first typed model call
 
@@ -125,6 +130,97 @@ uv run --locked python -m app.examples.quickstart
 
 This makes a real API call. The generated output follows your Python contract; its contents depend on the model.
 
+To run the same kind of task on any provider, use `create_agent` with a model reference:
+
+```python
+import asyncio
+from pydantic import BaseModel
+from app.orchestration.providers import create_agent
+
+class SummaryResponse(BaseModel):
+    summary: str
+    key_points: list[str]
+
+agent = create_agent(
+    model="anthropic:claude-sonnet-5-5",   # or "ollama:llama3.2", "gemini:gemini-2.5-flash", ...
+    name="Summarizer",
+    instructions="Summarize the supplied text clearly and identify its key points.",
+    output_type=SummaryResponse,
+)
+print(asyncio.run(agent.run("The team completed the prototype. User testing starts next week.")))
+```
+
+## Catalog of agents and tools
+
+The application includes a catalog: every folder in `app/agents/` or `app/tools/` that follows the [catalog standards](docs/catalog-standards.md) is discovered automatically and published, with no registration code, in:
+
+| Channel | How to use it |
+|---|---|
+| Dashboard | http://127.0.0.1:8000: filter by type, category, channel and status; open an item to see its contract, choose its model, run its examples and enable or disable it |
+| REST API | `GET /api/catalog`, `GET /api/catalog/{id}`, `POST /api/catalog/{id}/run`, `PATCH /api/catalog/{id}` (`{"active": false}`), `PATCH /api/catalog/{id}/channels`, `PATCH /api/catalog/{id}/model` |
+| CLI | `uv run --locked python -m app.catalog_cli list \| check \| new \| run \| enable \| disable` |
+| MCP | `uv run --locked python -m app.catalog_mcp` (stdio by default; see below) |
+
+The dashboard is an admin tool for local use: it has no authentication, so keep it bound to `127.0.0.1`.
+
+```powershell
+uv run --locked python -m app.catalog_cli list
+uv run --locked python -m app.catalog_cli run word_count --example 1
+'{"text":"one two"}' | uv run --locked python -m app.catalog_cli run word_count --input -
+uv run --locked python -m app.catalog_cli disable word_count
+uv run --locked python -m app.catalog_cli enable word_count
+```
+
+**Reference items.** `word_count` is a deterministic tool that works offline. `summarizer` is an agent that takes `{"text": "..."}` and runs on the configured model. Each has a README explaining how it works: [word_count](app/tools/word_count/README.md), [summarizer](app/agents/summarizer/README.md).
+
+**Adding an item.** Use the generator, which creates the manifest, contract, README and (for agents) the prompt, then validate:
+
+```powershell
+uv run --locked python -m app.catalog_cli new tool date_extractor --title "Date extractor"
+uv run --locked python -m app.catalog_cli new agent reviewer --title "Text reviewer"
+uv run --locked python -m app.catalog_cli check
+uv run --locked python -m unittest app.tests.test_catalog -v
+```
+
+**State.** Items start enabled. Enabled state, channels and per-agent model choices are stored in `.catalog.sqlite3` in the repository root (not versioned); point every process to another file with `CATALOG_DB`. Settings are stored in `.env`; use `CATALOG_ENV_FILE` to point to another file.
+
+**MCP server.** Configure the client to start `uv run --locked python -m app.catalog_mcp` over stdio, with the repository root as the working directory. The server lists only items that are enabled with the MCP channel on; the client may need to refresh its tool list after a change. Three transports are available, selected by argument or by `MCP_TRANSPORT`:
+
+```powershell
+uv run --locked python -m app.catalog_mcp --transport stdio
+uv run --locked python -m app.catalog_mcp --transport streamable-http --host 127.0.0.1 --port 8001
+uv run --locked python -m app.catalog_mcp --transport sse --host 127.0.0.1 --port 8001
+```
+
+Streamable HTTP is served at `http://127.0.0.1:8001/mcp` and SSE at `http://127.0.0.1:8001/sse`. Configure Codex or Claude Code with stdio for a local subprocess, or with the HTTP MCP URL when the client and server can reach each other over the network. Restart the MCP server after changing Settings so it picks up new values.
+
+AI coding assistants get the same rules from [AGENTS.md](AGENTS.md)/[CLAUDE.md](CLAUDE.md) and the [`catalog-create-item`](.agents/skills/catalog-create-item/SKILL.md) skill.
+
+## Providers and models
+
+Agents built with `create_agent` (all catalog agents) are provider-independent. A **model reference** names the provider and the model:
+
+| Provider | Reference prefix | Setting | Example |
+|---|---|---|---|
+| OpenAI | `openai:` | `OPENAI_API_KEY` | `openai:gpt-4.1-mini` |
+| Anthropic | `anthropic:` | `ANTHROPIC_API_KEY` | `anthropic:claude-sonnet-5-5` |
+| Google Gemini | `gemini:` | `GEMINI_API_KEY` | `gemini:gemini-2.5-flash` |
+| DeepSeek | `deepseek:` | `DEEPSEEK_API_KEY` | `deepseek:deepseek-flash` |
+| Mistral | `mistral:` | `MISTRAL_API_KEY` | `mistral:mistral-large-latest` |
+| Groq | `groq:` | `GROQ_API_KEY` | `groq:llama-3.3-70b-versatile` |
+| OpenRouter | `openrouter:` | `OPENROUTER_API_KEY` | `openrouter:openai/gpt-4.1-mini` |
+| Ollama | `ollama:` | `OLLAMA_BASE_URL` (no key) | `ollama:llama3.2:3b` |
+| LM Studio | `lmstudio:` | `LMSTUDIO_BASE_URL` (no key) | `lmstudio:local-model` |
+| Any OpenAI-compatible server | `local:` | `LOCAL_BASE_URL`, `LOCAL_API_KEY` | `local:my-model` |
+
+Everything after the first `:` is the model name. A reference without a known prefix uses the default provider. Model names in the table are examples: use **Test connection** in Settings (or `POST /api/providers/{id}/models`) to list the models your account actually has.
+
+**Which model an agent uses** (first match wins): the model passed to `create_agent(model=...)` or chosen for the agent in the dashboard; then `model:` in the agent's Markdown front matter; then `DEFAULT_MODEL` (which falls back to `openai:<OPENAI_MODEL_NAME>`).
+
+**How it works.** [app/orchestration/providers.py](app/orchestration/providers.py) holds the provider presets. `create_agent` returns a `GPTAgent` (OpenAI Responses API, native structured output) for `openai:` and a `GPTLocalAgent` (Chat Completions, JSON schema in the instructions, validated locally) for every other provider. It raises `RuntimeError("Missing setting: ...")` when the provider's key is not configured. To add a provider with an OpenAI-compatible endpoint, add one `Provider(...)` entry to `PROVIDERS` and its key to `env-example`; Settings lists it automatically.
+
+Provider compatibility still varies: tools, handoffs, reasoning and JSON compliance depend on the model. Prefer capable models for structured output, and validate the combination you plan to use.
+
 ## Wrapper reference
 
 Import wrappers from their modules under `app.orchestration`.
@@ -137,6 +233,9 @@ Import wrappers from their modules under `app.orchestration`.
 | `GPTLocal` | `gpt_local` | Direct Chat Completions calls to a compatible local or remote server | Parsed output, with a text-response fallback |
 | `GPTLocalAgent` | `gpt_agent_local` | Agents SDK workflows using a compatible Chat Completions provider | Final output parsed by the wrapper |
 | `GPTDecision` | `gpt_decision` | Predicates, fixed-choice classification and rubric scoring | Complete SDK `Decision` object |
+| `create_agent(...)` | `providers` | Factory: an agent for any provider from a `provider:model` reference (returns `GPTAgent` or `GPTLocalAgent`) | The agent instance |
+
+Prefer `create_agent` for new agents, so the provider stays a configuration choice. Use a specific wrapper when you need its provider-specific features (Decisions, the sandbox or direct calls).
 
 All wrappers expose `run_sync(...)` and async `run(...)`. `GPTDecision` additionally requires `questions=...` and uses a different response contract.
 
@@ -146,8 +245,13 @@ All wrappers expose `run_sync(...)` and async `run(...)`. `GPTDecision` addition
 
 Use [env-example](env-example) as the source for a complete configuration. These values are the repository's defaults, not recommendations for every workload.
 
+Every variable below except `MCP_*`, `CATALOG_*` and the optional `OPENAI_*` model names can be edited in the dashboard's **Settings**.
+
 | Variable | Default | Purpose |
 |---|---|---|
+| `DEFAULT_MODEL` | `openai:<OPENAI_MODEL_NAME>` | `provider:model` used by `create_agent` and catalog agents that do not choose one |
+| `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY` | Not set | Keys for the corresponding `provider:` prefixes |
+| `OLLAMA_BASE_URL`, `LMSTUDIO_BASE_URL` | `http://localhost:11434/v1`, `http://localhost:1234/v1` | Addresses of local servers for `ollama:` and `lmstudio:` |
 | `OPENAI_API_KEY` | No usable key supplied | Authentication for OpenAI API calls |
 | `OPENAI_MODEL_NAME` | `gpt-4.1-mini` | Fallback model for `GPT` and `GPTAgent` |
 | `OPENAI_SANDBOX_MODEL_NAME` | `gpt-5-mini` | Fallback model for `GPTSandboxAgent` |
@@ -155,8 +259,10 @@ Use [env-example](env-example) as the source for a complete configuration. These
 | `LOCAL_BASE_URL` | `http://localhost:1234/v1` | Compatible Chat Completions endpoint |
 | `LOCAL_MODEL_NAME` | `local-model` | Model identifier accepted by that server |
 | `LOCAL_API_KEY` | `lm-studio` | Local placeholder or the remote provider's real key |
-| `LOCAL_DISABLE_TRACING` | `true` | Disable Agents SDK tracing when constructing `GPTLocalAgent` |
-| `MCP_TRANSPORT` | `streamable-http` | Default transport for the sample MCP server |
+| `LOCAL_DISABLE_TRACING` | `true` | Disable Agents SDK tracing when constructing `GPTLocalAgent` (all non-OpenAI providers) |
+| `MCP_TRANSPORT` | `streamable-http` | Default transport for the sample MCP server (the catalog MCP server defaults to `stdio`) |
+| `CATALOG_DB` | `.catalog.sqlite3` | Catalog state: enabled items, channels and per-agent models |
+| `CATALOG_ENV_FILE` | `.env` | File read and written by Settings and loaded by the wrappers |
 
 Configuration helpers live in [app/orchestration/config.py](app/orchestration/config.py):
 
@@ -175,8 +281,9 @@ Model availability depends on the provider and account. If a configured model is
 For `GPT`, `GPTAgent`, `GPTSandboxAgent`, `GPTLocal` and `GPTLocalAgent`:
 
 - **Without `agent_id`:** constructor settings such as `model` and `max_tokens` are used; omitted models fall back to the corresponding environment setting.
-- **With `agent_id`:** the Markdown definition supplies the name, role, instructions, model and token limit. Constructor `model` and `max_tokens` arguments do not replace those fields.
+- **With `agent_id`:** the Markdown definition supplies the name, role, instructions, model and token limit. For `GPTAgent` and `GPTLocalAgent`, a constructor `model` argument replaces the Markdown model (this is how `create_agent` applies a provider choice); `max_tokens` is always taken from the Markdown. For `GPT`, `GPTLocal` and `GPTSandboxAgent`, constructor `model` and `max_tokens` do not replace those fields.
 - **Markdown model omitted or empty:** the wrapper uses its provider-specific fallback. This is useful when sharing a definition across environments.
+- **Markdown model with a provider prefix** (`model: ollama:llama3.2`): only `create_agent` understands the prefix. Instantiating `GPTAgent(agent_id=...)` directly with such a definition would send the whole string to OpenAI.
 
 `output_type`, `tools`, `handoffs` and MCP settings can still be supplied where the selected wrapper supports them. `GPTDecision` does not load Markdown definitions: its constructor `model` overrides `OPENAI_DECISION_MODEL_NAME`, and questions are passed directly.
 
@@ -280,6 +387,8 @@ The validator checks authoring conventions and actual loading. It does not evalu
 
 ## Local models and compatible providers
 
+For agents, the simplest path is `create_agent(model="ollama:<model>")` or `"lmstudio:<model>"`, described in [Providers and models](#providers-and-models). This section covers the underlying `Local` wrappers, which you can also use directly.
+
 The `Local` wrappers accept a compatible hosted endpoint as well as a local server. Support depends on the provider's implementation of Chat Completions, output formatting and tools.
 
 | Server or provider | Base URL | Key |
@@ -317,7 +426,9 @@ For Agents SDK workflows, import `GPTLocalAgent` from `app.orchestration.gpt_age
 
 ## DeepSeek API
 
-The existing Chat Completions wrappers can use a DeepSeek key without an additional library. Configure the same `LOCAL_*` variables:
+With `create_agent`, set `DEEPSEEK_API_KEY` (or paste it in Settings) and use a reference such as `deepseek:deepseek-flash`; nothing else is needed.
+
+The direct Chat Completions wrappers can also use a DeepSeek key without an additional library. Configure the same `LOCAL_*` variables:
 
 ```dotenv
 LOCAL_BASE_URL="https://api.deepseek.com"
@@ -341,7 +452,7 @@ result = agent.run_sync("Explain machine learning.")
 print(result.final_output)
 ```
 
-With tracing disabled, these paths do not need an OpenAI key. The wrappers read `LOCAL_API_KEY`; they do not automatically read `DEEPSEEK_API_KEY`.
+With tracing disabled, these paths do not need an OpenAI key. The direct wrappers read `LOCAL_API_KEY`; only `create_agent` with the `deepseek:` prefix reads `DEEPSEEK_API_KEY`.
 
 Tool calls, MCP, handoffs and reasoning behavior must be checked with the selected DeepSeek model. In particular, tool conversations in thinking mode may require provider-specific handling of reasoning content. The project documents the compatible connection path; live DeepSeek behavior has not been validated by the offline tests. This configuration does not imply DeepSeek support for OpenAI Decisions or the sandbox runtime.
 
@@ -527,7 +638,7 @@ See the [sandbox reference](.agents/skills/agents-template-integrar-ferramentas/
 
 ## FastAPI application
 
-The default [app/main.py](app/main.py) is a minimal HTTP integration scaffold. Start it with:
+The default [app/main.py](app/main.py) is a minimal HTTP integration scaffold that also mounts the [catalog](#catalog-of-agents-and-tools) dashboard and API ([app/catalog_api.py](app/catalog_api.py)). Start it with:
 
 ```bash
 uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
@@ -535,8 +646,12 @@ uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
 | Endpoint | Purpose | Model call |
 |---|---|---|
+| `GET /` | Catalog dashboard | No |
 | `GET /health` | Returns `{"status":"ok"}` | No |
 | `POST /example` | Accepts a `data` object and returns a fixed sample message | No |
+| `/api/catalog/...` | Catalog listing, item contracts, state, channels, models and runs | Only `POST .../run` on an agent |
+| `GET`/`PUT /api/settings` | Read (keys masked) and update provider settings in `.env` | No |
+| `GET /api/providers`, `POST /api/providers/{id}/models` | Provider status; connection test listing the provider's models | Lists models, no generation |
 | `GET /docs` | Interactive OpenAPI documentation | No |
 
 Example request from a POSIX shell:
@@ -575,10 +690,11 @@ The examples are starting points for your own endpoints. Define your application
 
 ## Skills for coding agents
 
-The repository includes four development skills under `.agents/skills/`. They help a coding agent use the actual wrappers, generate compatible definitions and validate its implementation.
+The repository includes five development skills under `.agents/skills/`. They help a coding agent use the actual wrappers, generate compatible definitions and validate its implementation. Coding agents also read the project rules in [AGENTS.md](AGENTS.md) (Codex and others) and [CLAUDE.md](CLAUDE.md) (Claude Code).
 
 | Skill | Main task |
 |---|---|
+| [`catalog-create-item`](.agents/skills/catalog-create-item/SKILL.md) | Create or change a catalog agent or tool following the [catalog standards](docs/catalog-standards.md) |
 | [`agents-template-criar-agente`](.agents/skills/agents-template-criar-agente/SKILL.md) | Create or review Markdown definitions, output contracts and loading code |
 | [`agents-template-criar-aplicacao`](.agents/skills/agents-template-criar-aplicacao/SKILL.md) | Implement Python features and FastAPI endpoints, including Decisions integration |
 | [`agents-template-orquestrar-agentes`](.agents/skills/agents-template-orquestrar-agentes/SKILL.md) | Build sequential flows, Decisions-based routing, handoffs and specialist tools |
@@ -590,13 +706,14 @@ Example request:
 Use $agents-template-orquestrar-agentes to classify requests with GPTDecision and route them to configured specialists.
 ```
 
-Skills are written in Portuguese and versioned with the project. Discovery depends on your coding agent's support for repository skills; in a session that has not discovered them, reload the project or start a new chat. Another agent can also be asked to read the relevant `SKILL.md` directly.
+The four `agents-template-*` skills are written in Portuguese; `catalog-create-item` is in English, like the catalog. All are versioned with the project. Discovery depends on your coding agent's support for repository skills; in a session that has not discovered them, reload the project or start a new chat. Another agent can also be asked to read the relevant `SKILL.md` directly.
 
 | Location | Used by | Content |
 |---|---|---|
 | `.agents/skills/` | Coding agents working on the project | Development instructions, references and reusable examples |
 | `app/assets/skills/` | Sandbox agents during a task | Runtime skill instructions |
 | `app/assets/agents/` | Agent-definition loaders | Markdown definitions of application agents |
+| `app/agents/`, `app/tools/` | The catalog | Published catalog items (manifest, contract, README) |
 
 The [complete development skills guide](docs/development-skills.md) covers invocation, assets, validators, discovery and maintenance. No global skill installation is required to keep the skills in this repository.
 
@@ -613,6 +730,7 @@ uv run --locked python -m unittest discover -s app/tests -v
 Or run a focused module:
 
 ```bash
+uv run --locked python -m unittest app.tests.test_catalog -v
 uv run --locked python -m unittest app.tests.test_gpt_decision -v
 uv run --locked python -m unittest app.tests.test_mcp_server -v
 uv run --locked python -m unittest app.tests.test_skill_examples -v
@@ -620,6 +738,7 @@ uv run --locked python -m unittest app.tests.test_skill_examples -v
 
 | Test module | Coverage |
 |---|---|
+| `test_catalog` | Every item follows the standard, tool examples produce their expected output, catalog API and MCP channel filtering, the `new` generator, Settings (keys never returned, validation), model references, `create_agent` backends, per-agent model choice and provider endpoints |
 | `test_gpt_decision` | Sync/async SDK requests over mock HTTP transports, typed answers, usage, validation and routing outcomes |
 | `test_mcp_server` | Transport configuration, HTTP tool calls and Agents SDK stdio integration |
 | `test_skill_examples` | Agent definition validation, endpoint contracts, sequential data flow, failure handling and a tool adapter |
@@ -644,6 +763,7 @@ Several files under `app/tests/` are demonstrations rather than unittest cases. 
 | `app.tests.test_gpt_local` | Direct compatible Chat Completions call | Configured server and compatible agent model |
 | `app.tests.test_gpt_agent_local` | Compatible-provider writer/evaluator agents | Configured server, compatible agent models and tool support |
 | `app.examples.decisions` | Grouped decisions or explicit specialist routing | OpenAI key and Decisions model access |
+| `app.catalog_cli run summarizer --example 1` | A catalog agent on the configured provider | A configured provider and model |
 
 For local demonstrations, review the Markdown models before execution. Always run from the project root as a module, rather than invoking a file path such as `python app/tests/test_gpt_agents.py`.
 
@@ -651,9 +771,18 @@ For local demonstrations, review the Markdown models before execution. Always ru
 
 ```text
 .
-|-- .agents/skills/               # Four skills for coding agents
+|-- .agents/skills/               # Five skills for coding agents
 |-- app/
-|   |-- main.py                   # Minimal FastAPI application
+|   |-- main.py                   # FastAPI application (mounts the catalog)
+|   |-- catalog.py                # Catalog discovery, validation, state and execution
+|   |-- catalog.html              # Catalog dashboard
+|   |-- catalog_api.py            # Dashboard, catalog, settings and provider endpoints
+|   |-- catalog_cli.py            # Catalog CLI (list, check, new, run, enable, disable)
+|   |-- catalog_mcp.py            # Catalog MCP server
+|   |-- settings.py               # Settings stored in .env (keys write-only)
+|   |-- agents/<id>/              # Catalog agents: item.toml, handler.py, README.md
+|   |-- tools/<id>/               # Catalog tools: item.toml, handler.py, README.md
+|   |-- templates/catalog/        # Templates used by `catalog_cli new`
 |   |-- assets/
 |   |   |-- agents/               # Markdown application-agent definitions
 |   |   `-- skills/               # Runtime sandbox skills
@@ -670,12 +799,15 @@ For local demonstrations, review the Markdown models before execution. Always ru
 |   |   |-- gpt_decision.py       # OpenAI Decisions wrapper
 |   |   |-- gpt_local.py          # Direct compatible Chat Completions calls
 |   |   |-- gpt_sandbox_agent.py  # Sandbox-capable agent
+|   |   |-- providers.py          # Provider presets, model references, create_agent
 |   |   `-- util.py               # Markdown agent loaders
 |   `-- tests/                    # Offline tests and live demonstrations
 |-- docs/
+|   |-- catalog-standards.md      # How to build catalog agents and tools
 |   |-- decisions.md              # Decisions API and routing guide
 |   `-- development-skills.md     # Coding-agent skills guide
 |-- .python-version               # Preferred development interpreter
+|-- AGENTS.md, CLAUDE.md          # Rules for AI coding assistants
 |-- CHANGELOG.md
 |-- env-example
 |-- LICENSE
@@ -701,6 +833,11 @@ For local demonstrations, review the Markdown models before execution. Always ru
 | Unix-local sandbox error on Windows | Use the Docker backend or provide a supported client; verify optional dependencies and daemon availability |
 | Skill available but behavior does not show its use | Check a task-specific observable outcome or traces; loading is not proof of use |
 | Decisions returns `review_required` | Inspect `reason`, the named answer, confidence and the configured specialist mapping |
+| Dashboard shows "Missing setting" or a run returns `409` | Add the key of the agent's provider in Settings, or choose another model in the agent's side panel |
+| **Test connection** fails | For local servers, start the server and check its address; for hosted providers, check the key (HTTP 401/403 means it was rejected) |
+| Agent ignores the model chosen in Settings | A per-agent choice or the prompt's `model:` takes precedence over `DEFAULT_MODEL`; the side panel shows which one is in use |
+| Settings change not seen by the MCP server | Restart `app.catalog_mcp`; it runs in its own process |
+| `catalog_cli check` reports a problem | Follow the message; the rules are in [docs/catalog-standards.md](docs/catalog-standards.md) |
 
 ## Scope and compatibility
 
@@ -719,59 +856,15 @@ Changes should include a concrete example or test appropriate to the behavior be
 ```bash
 uv sync --locked
 uv run --locked python -m unittest discover -s app/tests -v
+uv run --locked python -m app.catalog_cli check
 uv pip check
 git diff --check
 ```
+
+Catalog items must follow the [catalog standards](docs/catalog-standards.md).
 
 When modifying a wrapper or the Markdown loader, review its development skill, examples and provider assumptions. Keep actual credentials out of committed files. In a bug report or pull request, include the command, platform, relevant versions and expected versus observed behavior, with sensitive values removed.
 
 ## License
 
 Distributed under the [MIT license](LICENSE).
-
-## Local catalog of agents and tools
-
-Run from the repository root. Every module uses the same uv environment.
-
-```powershell
-uv sync --locked
-uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000
-```
-
-Open http://127.0.0.1:8000 for the dashboard or http://127.0.0.1:8000/docs for the API.
-The dashboard is an admin tool meant for local use only: keep it bound to 127.0.0.1.
-
-```powershell
-uv run --locked python -m app.catalog_cli list
-'{"text":"one two"}' | uv run --locked python -m app.catalog_cli run word_count --input -
-uv run --locked python -m app.catalog_cli disable word_count
-uv run --locked python -m app.catalog_cli enable word_count
-```
-
-- **API**. `GET /api/catalog` lists the items and `GET /api/catalog/{id}` returns the input and output fields documented in the handler. `PATCH /api/catalog/{id}` accepts `{"active": false}`. `POST /api/catalog/{id}/run` accepts the item's input object.
-- **Providers and models**. Agents run on any provider: OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Groq, OpenRouter, Ollama, LM Studio or any OpenAI-compatible server. Models are written as `provider:model` (e.g. `anthropic:claude-sonnet-5-5`, `ollama:llama3.2`). Set the default model and each provider's key in **Settings** (gear icon), test the connection there, and pick a different model per agent in its side panel. Keys are stored in `.env` and never returned, only a masked hint (`GET`/`PUT /api/settings`, `GET /api/providers`). Use `CATALOG_ENV_FILE` to point to another file.
-- **MCP**. Configure the client to start `uv run --locked python -m app.catalog_mcp` over stdio, with the repository root as the working directory. The client may need to refresh its tool list after a status change.
-- **State**. Items start enabled. State is shared through `.catalog.sqlite3` in the root. Use `CATALOG_DB` to point the processes to another SQLite file.
-- **Examples**. `word_count` works offline. `summarizer` takes `{"text": "..."}` and needs a configured model provider.
-
-To add another item, follow [docs/catalog-standards.md](docs/catalog-standards.md)
-and use the generator, which creates the manifest, contract, README and (for agents) the prompt:
-
-```powershell
-uv run --locked python -m app.catalog_cli new tool date_extractor --title "Date extractor"
-uv run --locked python -m app.catalog_cli check
-uv run --locked python -m app.catalog_cli run word_count --example 1
-```
-
-AI assistants get the same rules from `AGENTS.md`/`CLAUDE.md` and the
-`catalog-create-item` skill.
-
-The MCP server supports three transports, selected by argument or by the `MCP_TRANSPORT` variable:
-
-```powershell
-uv run --locked python -m app.catalog_mcp --transport stdio
-uv run --locked python -m app.catalog_mcp --transport streamable-http --host 127.0.0.1 --port 8001
-uv run --locked python -m app.catalog_mcp --transport sse --host 127.0.0.1 --port 8001
-```
-
-Streamable HTTP is served at `http://127.0.0.1:8001/mcp` and SSE at `http://127.0.0.1:8001/sse`. The default is stdio. Configure Codex or Claude Code with stdio for a local subprocess, or with the HTTP MCP URL when the client and server can reach each other over the network.

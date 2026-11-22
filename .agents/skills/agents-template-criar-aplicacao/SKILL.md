@@ -1,19 +1,21 @@
 ---
 name: agents-template-criar-aplicacao
-description: Implementar funcionalidades Python, serviços ou endpoints FastAPI usando os wrappers deste projeto, com OpenAI, Decisions, modelos locais ou DeepSeek. Use para integrar chamadas de modelos a uma aplicação; não para um pedido restrito à redação de uma definição Markdown.
+description: Implementar funcionalidades Python, serviços ou endpoints FastAPI usando os wrappers deste projeto, com OpenAI, Anthropic, Gemini, DeepSeek, modelos locais ou qualquer provedor compatível, e Decisions. Use para integrar chamadas de modelos a uma aplicação; não para um pedido restrito à redação de uma definição Markdown.
 ---
 
 # Criar aplicações com os wrappers
 
 Leia `pyproject.toml`, `app/main.py`, `app/orchestration/config.py` e o wrapper
 necessário. Trabalhe na raiz do projeto e execute módulos a partir dela.
-Reutilize a estrutura existente, sem criar uma camada genérica de provedores
-ou alterar wrappers quando a configuração existente resolve o pedido.
+Reutilize a estrutura existente: a seleção de provedor já existe em
+`app/orchestration/providers.py` (`create_agent`, `PROVIDERS`). Não crie outra
+camada de provedores nem altere wrappers quando a configuração resolve o pedido.
 
 ## Escolher a integração
 
 | Necessidade | Wrapper |
 |---|---|
+| Agente em qualquer provedor, escolhido por configuração (`provedor:modelo`) | `create_agent` |
 | OpenAI Responses API, saída tipada | `GPT` |
 | Probabilidade, categoria fixa ou score de rubrica | `GPTDecision` |
 | OpenAI com ferramentas e handoffs | `GPTAgent` |
@@ -35,9 +37,10 @@ SDK `Decision` inteiro, em vez do conteúdo final dos wrappers de agentes.
 - Defina modelos Pydantic de entrada e saída adequados à funcionalidade.
   Passe o modelo de saída em `output_type`; uma descrição no prompt não
   substitui o contrato Python.
-- Com `agent_id`, o frontmatter define `model` e `max_tokens`, ignorando
-  argumentos homônimos. Se o modelo for configurável por ambiente, omita
-  `model` do Markdown. Consulte `load_agent_config` para a precedência atual.
+- Com `agent_id`, o frontmatter define `model` e `max_tokens`. Em `GPTAgent`,
+  `GPTLocalAgent` e `create_agent`, o argumento `model` substitui o do Markdown;
+  nos demais wrappers, não. Se o modelo for configurável, omita `model` do
+  Markdown e use `DEFAULT_MODEL` ou a escolha por agente no painel do catálogo.
 - Em FastAPI e outras funções assíncronas, use `await wrapper.run(prompt)`.
   Os wrappers de agentes retornam o conteúdo final, não o `RunResult` do SDK.
   `GPTDecision.run(...)` exige `questions` e retorna `Decision`.

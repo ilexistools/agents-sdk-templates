@@ -44,7 +44,7 @@ PROVIDERS: dict[str, Provider] = {p.id: p for p in (
     Provider("gemini", "Google Gemini", "https://generativelanguage.googleapis.com/v1beta/openai/",
              "GEMINI_API_KEY", examples=("gemini-2.5-flash", "gemini-2.5-pro")),
     Provider("deepseek", "DeepSeek", "https://api.deepseek.com", "DEEPSEEK_API_KEY",
-             examples=("deepseek-chat", "deepseek-reasoner")),
+             examples=("deepseek-flash",)),
     Provider("mistral", "Mistral", "https://api.mistral.ai/v1", "MISTRAL_API_KEY",
              examples=("mistral-large-latest", "mistral-small-latest")),
     Provider("groq", "Groq", "https://api.groq.com/openai/v1", "GROQ_API_KEY",

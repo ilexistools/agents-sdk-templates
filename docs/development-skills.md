@@ -1,9 +1,10 @@
 # Development skills
 
-The repository bundles four skills for coding agents that create applications
-with this template. They are versioned under `.agents/skills/`; their instructions
-and UI descriptions are in Portuguese. Application source and README conventions
-remain unchanged.
+The repository bundles five skills for coding agents that create applications
+with this template. They are versioned under `.agents/skills/`. The four
+`agents-template-*` skills are written in Portuguese; `catalog-create-item` is in
+English, like the catalog it documents. Coding agents also read the project rules
+in [AGENTS.md](../AGENTS.md) and [CLAUDE.md](../CLAUDE.md).
 
 ## Discovery and setup
 
@@ -22,6 +23,7 @@ with their skill when copying it; run its examples from a checkout of this proje
 
 | Skill | Use it for | Example request |
 |---|---|---|
+| [catalog-create-item](../.agents/skills/catalog-create-item/SKILL.md) | Catalog agents and tools following [the catalog standards](catalog-standards.md) | `Use $catalog-create-item to add a tool that extracts dates from text.` |
 | [agents-template-criar-agente](../.agents/skills/agents-template-criar-agente/SKILL.md) | Markdown definitions, Pydantic output contracts and loading code | `Use $agents-template-criar-agente to create a report reviewer with structured output.` |
 | [agents-template-criar-aplicacao](../.agents/skills/agents-template-criar-aplicacao/SKILL.md) | Python features, provider configuration and FastAPI endpoints | `Use $agents-template-criar-aplicacao to create a classification endpoint using DeepSeek.` |
 | [agents-template-orquestrar-agentes](../.agents/skills/agents-template-orquestrar-agentes/SKILL.md) | Mandatory stages, handoffs and agents exposed as tools | `Use $agents-template-orquestrar-agentes to extract facts and then review them.` |
@@ -33,6 +35,9 @@ but an agent should load only the references relevant to that request.
 
 ## Contents and intended outputs
 
+- **Create a catalog item:** the workflow from classification (agent or tool)
+  to the `catalog_cli new` generator, contract, manifest, README and validation
+  with `catalog_cli check` and `app.tests.test_catalog`.
 - **Create an agent:** Markdown authoring guidance, a complete report-reviewer
   definition, a matching Pydantic example, and an offline validator using the
   application's real loader. It builds on the writing guidance in the existing
@@ -58,6 +63,7 @@ definition remains a skill asset until copied to `app/assets/agents/` for a task
 | `.agents/skills/` | The coding agent working on this repository | Create and integrate code and agent definitions |
 | `app/assets/skills/` | `GPTSandboxAgent` during application execution | Provide task instructions such as haiku review |
 | `app/assets/agents/` | `load_agent_config` and the model wrappers | Define application agents in Markdown |
+| `app/agents/`, `app/tools/` | The catalog (dashboard, API, CLI, MCP) | Published agents and tools |
 
 The sandbox's `skills_path=".agents"` is inside its own workspace. It does not
 mean the repository's development skills are loaded by the sandbox. The default
@@ -83,6 +89,13 @@ checks filename/id agreement, required authoring fields and sections, token/mode
 types, and successful loading. Its authoring conventions are stricter than the
 loader. It does not evaluate response quality or prove a Python output model
 matches the prose contract.
+
+Validate the catalog items and run their offline tests:
+
+```bash
+uv run --locked python -m app.catalog_cli check
+uv run --locked python -m unittest app.tests.test_catalog -v
+```
 
 Run the offline executable-example checks:
 
@@ -117,7 +130,8 @@ changing their constructors, model precedence, return types or MCP/sandbox APIs,
 review the relevant skill and run its executable checks. Keep provider/model
 examples aligned with the provider's official documentation when changing them.
 
-These skills record important current constraints: frontmatter model precedence,
+These skills record important current constraints: model precedence (`create_agent`
+and constructor `model` for `GPTAgent`/`GPTLocalAgent` versus the frontmatter),
 prompt-based JSON parsing for compatible providers, MCP connection lifetime,
 mutable MCP state during concurrent calls, and backend requirements on Windows.
 Provider-specific tool/reasoning behavior and live sandbox execution still require

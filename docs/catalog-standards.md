@@ -136,9 +136,15 @@ it is generated from `handler.py` automatically.
 
 The dashboard is built only from the manifest and the contract:
 
-- `category` defines the group; `title`, `icon`, `description` and `type` make up the list row.
-- The side panel shows version, tags, missing settings, input/output fields (from the
-  `description`s) and the examples with a **Run** button.
+- `category` defines the group header ("Text · 2 items"); with two or more categories,
+  a row of category chips above the list filters by category. Keep the number of
+  categories small and reuse existing ones.
+- `title`, `icon`, `description`, `type`, channels and status make up the list row.
+- The side panel shows version, tags, missing settings, the enabled switch, channels,
+  the **Model** picker (agents only), input/output fields (from the `description`s) and
+  the examples with a **Run** button.
+- The header holds the counters and the gear icon (**Settings**, which also links to
+  the API docs).
 - Use distinct icons within a category; no jargon in descriptions.
 
 ## 9. Providers, models and settings
@@ -147,7 +153,7 @@ Agents are provider-agnostic. A **model reference** names the provider and the m
 
 ```
 openai:gpt-4.1-mini        anthropic:claude-sonnet-5-5     gemini:gemini-2.5-flash
-deepseek:deepseek-chat     mistral:mistral-large-latest    groq:llama-3.3-70b-versatile
+deepseek:deepseek-flash    mistral:mistral-large-latest    groq:llama-3.3-70b-versatile
 openrouter:openai/gpt-4.1-mini                             ollama:llama3.2:3b
 lmstudio:local-model       local:<model>  (any other OpenAI-compatible server)
 ```

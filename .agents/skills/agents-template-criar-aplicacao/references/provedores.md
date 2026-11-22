@@ -1,8 +1,22 @@
 # Provedores e configuração
 
-Consulte `app/orchestration/config.py`, `gpt_local.py`, `gpt_agent_local.py`,
-`env-example` e as seções de provedores do README. As versões efetivas estão
+Consulte `app/orchestration/providers.py`, `config.py`, `gpt_local.py`,
+`gpt_agent_local.py`, `env-example` e as seções de provedores do README. As versões efetivas estão
 em `uv.lock`; não atualize dependências só para reproduzir um exemplo.
+
+## Agentes independentes de provedor
+
+Para agentes, use `create_agent(agent_id, model="provedor:modelo", ...)`. Os
+prefixos são `openai`, `anthropic`, `gemini`, `deepseek`, `mistral`, `groq`,
+`openrouter`, `ollama`, `lmstudio` e `local` (qualquer servidor compatível).
+Cada um lê sua chave (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`...)
+ou endereço (`OLLAMA_BASE_URL`, `LMSTUDIO_BASE_URL`, `LOCAL_BASE_URL`). Sem `model`,
+vale o `model:` do frontmatter e depois `DEFAULT_MODEL`. `openai:` usa `GPTAgent`
+(Responses API); os demais usam `GPTLocalAgent` com o endpoint compatível do provedor.
+Para um provedor novo com endpoint compatível, acrescente um `Provider(...)` em
+`PROVIDERS` e sua chave ao `env-example`.
+
+## Wrappers diretos
 
 | Destino | Configuração | Wrappers previstos |
 |---|---|---|
@@ -30,8 +44,9 @@ real em `LOCAL_API_KEY`. Defina o nome do modelo em `LOCAL_MODEL_NAME`, conforme
 a [documentação DeepSeek](https://api-docs.deepseek.com/guides/harness).
 O README contém um exemplo de `.env` completo.
 
-`DEEPSEEK_API_KEY` não é lida automaticamente pelos wrappers. Para usar esse
-nome, carregue o ambiente e passe explicitamente `api_key=os.environ["DEEPSEEK_API_KEY"]`.
+Com `create_agent` e o prefixo `deepseek:`, `DEEPSEEK_API_KEY` é lida
+automaticamente. Os wrappers diretos não a leem: carregue o ambiente e passe
+`api_key=os.environ["DEEPSEEK_API_KEY"]`, ou use `LOCAL_API_KEY`.
 Mantenha `LOCAL_DISABLE_TRACING="true"` para não exportar traces à OpenAI.
 `GPTLocalAgent` configura o tracing global do Agents SDK ao ser construído;
 considere esse efeito quando misturar provedores no mesmo processo.

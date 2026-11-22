@@ -26,9 +26,19 @@ revisor = GPTAgent(agent_id="relatorio_revisor", output_type=RevisaoResponse)
 # Em uma função async: resultado = await revisor.run(texto)
 ```
 
-Com DeepSeek ou servidor local, troque o import e a classe por `GPTLocalAgent`
-de `app.orchestration.gpt_agent_local`; configure `LOCAL_*`. Não reaproveite
-um frontmatter com um nome de modelo OpenAI nesse provedor.
+Para não amarrar o agente a um provedor, use `create_agent`:
+
+```python
+from app.orchestration.providers import create_agent
+
+revisor = create_agent("relatorio_revisor", output_type=RevisaoResponse)
+# ou, fixando o modelo: create_agent("relatorio_revisor", model="ollama:llama3.2", ...)
+```
+
+O modelo vem, nesta ordem, do argumento `model`, do `model:` do frontmatter
+(que aceita `provedor:modelo`) e de `DEFAULT_MODEL`. Com os wrappers diretos
+(`GPTLocalAgent` e `LOCAL_*`), não reaproveite um frontmatter com um nome de
+modelo OpenAI em outro provedor.
 
 ## Semântica do loader
 
@@ -39,7 +49,8 @@ um frontmatter com um nome de modelo OpenAI nesse provedor.
 - As seções convencionais são `INPUT`, `OUTPUT`, `INSTRUCTIONS` e `KNOWLEDGE`.
   Evite novos títulos Markdown de nível 1 dentro delas: o parser os interpreta
   como novas seções, inclusive dentro de blocos de código.
-- `model` ausente ou vazio usa o fallback. `max_tokens` ausente usa 2048;
+- `model` ausente ou vazio usa o fallback (com `create_agent`, `DEFAULT_MODEL`).
+  Um prefixo de provedor (`anthropic:...`) só é resolvido por `create_agent`. `max_tokens` ausente usa 2048;
   vazio não é equivalente a ausente e falha na conversão.
 - O validador exige `id`, `role`, `goal` e as quatro seções preenchidas como
   convenção de autoria. O loader em si é mais permissivo.
