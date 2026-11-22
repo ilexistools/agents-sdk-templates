@@ -39,7 +39,8 @@ matters to users, update both templates in `app/templates/catalog/`, the table i
 Endpoints go in `app/catalog_api.py` under `/api/...`; they are protected by the
 token middleware automatically. Return JSON, map `ValueError` to 422 and
 `Unavailable` to 409, never echo secrets. Dashboard code stays dependency-free
-(vanilla JS, CSS variables for light and dark themes, English text, accessible
+(vanilla JS; colors only through the CSS variables, which are defined for the light
+theme, `:root[data-theme=dark]` and the system dark preference; English text; accessible
 labels). Verify in a browser at desktop and mobile widths.
 
 ## Invariants

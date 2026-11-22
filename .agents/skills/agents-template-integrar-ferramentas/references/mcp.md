@@ -10,8 +10,8 @@ Execute da raiz, em um processo separado:
 uv run --locked python -m app.mcp_tools.server --transport streamable-http
 ```
 
-O endpoint é `http://localhost:8000/mcp`. O exemplo FastAPI também usa a porta
-8000, portanto altere a porta de um deles se ambos precisarem executar juntos.
+O endpoint é `http://localhost:8000/mcp`. O painel do catálogo usa a porta 8787
+e o servidor MCP do catálogo, a 8888, então todos podem executar juntos.
 
 ## Cliente gerenciado pelo wrapper
 

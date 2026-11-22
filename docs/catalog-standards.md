@@ -137,15 +137,16 @@ it is generated from `handler.py` automatically.
 
 The dashboard is built only from the manifest and the contract:
 
-- `category` defines the group header ("Text · 2 items") and an entry in the
+- `category` defines the group header ("Text", with "2 items" beside it) and an entry in the
   **Category** filter of the sidebar, with its count. Keep the number of categories small
   and reuse existing ones. `tags`, `id` and `category` are matched by the search box.
 - `title`, `icon`, `description`, `type`, channels and status make up the list row.
 - The side panel shows version, tags, missing settings, the enabled switch, channels,
   the **Model** picker (agents only), input/output fields (from the `description`s) and
   the examples with a **Run** button.
-- The header holds the counters and the gear icon (**Settings**, which also links to
-  the API docs).
+- The header holds only the counters and the gear icon. **Settings** contains the
+  theme (Appearance: light, dark or system, saved with the dashboard preferences), the server
+  settings and a link to the API docs.
 - Use distinct icons within a category; no jargon in descriptions.
 
 ## 9. Providers, models and settings

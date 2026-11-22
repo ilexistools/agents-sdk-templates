@@ -40,8 +40,50 @@ class DeployTests(unittest.TestCase):
     def test_open_without_token(self):
         self.assertEqual(self.client().get("/api/catalog").status_code, 200)
 
+    def test_preferences_are_stored_in_sqlite(self):
+        import sqlite3
+
+        client = self.client()
+        self.assertEqual(client.get("/api/preferences").json(), {})
+        saved = client.put("/api/preferences", json={
+            "theme": "dark", "filters_panel": "collapsed", "bulk_channel": "mcp",
+            "view": {"q": "count", "type": "tool", "item": "word_count", "status": ""},
+        }).json()
+        self.assertEqual(saved["view"], {"q": "count", "type": "tool", "item": "word_count"})
+        self.assertEqual(client.put("/api/preferences", json={"theme": "light"}).json()["filters_panel"], "collapsed")
+        from contextlib import closing
+
+        with closing(sqlite3.connect(os.environ["CATALOG_DB"])) as db:
+            stored = dict(db.execute("SELECT key, value FROM preferences"))
+        self.assertEqual(stored["theme"], '"light"')
+        self.assertNotIn("theme", client.put("/api/preferences", json={"theme": None}).json())
+
+    def test_preference_migration_never_overwrites_server_values(self):
+        client = self.client()
+        client.put("/api/preferences", json={"theme": "system"})
+        migrated = client.put("/api/preferences?only_missing=true",
+                              json={"theme": "dark", "filters_panel": "collapsed"}).json()
+        self.assertEqual((migrated["theme"], migrated["filters_panel"]), ("system", "collapsed"))
+        self.assertEqual(client.put("/api/preferences", json={"theme": "dark"}).json()["theme"], "dark")
+
+    def test_preferences_are_validated_and_allowed_when_settings_are_read_only(self):
+        client = self.client()
+        for body in ({"theme": "pink"}, {"filters_panel": "open"}, {"bulk_channel": "email"},
+                     {"view": {"unknown": "x"}}, {"view": {"q": "x" * 201}}, {"view": "q=x"}, {"colour": "red"},
+                     {"theme": ["dark"]}, {"filters_panel": {"a": 1}}, {"view": {"q": 5}}):
+            with self.subTest(body=body):
+                self.assertEqual(client.put("/api/preferences", json=body).status_code, 422)
+        os.environ["CATALOG_SETTINGS_READONLY"] = "true"
+        self.assertEqual(client.put("/api/preferences", json={"theme": "dark"}).status_code, 200)
+        os.environ["CATALOG_TOKEN"] = "pref-token"
+        self.assertEqual(client.get("/api/preferences").status_code, 401)
+
     def test_dashboard_is_never_served_stale(self):
         self.assertEqual(self.client().get("/").headers["cache-control"], "no-cache")
+
+    def test_favicon_is_served(self):
+        response = self.client().get("/favicon.ico")
+        self.assertEqual((response.status_code, response.headers["content-type"]), (200, "image/svg+xml"))
 
     def test_token_protects_everything_but_health(self):
         os.environ["CATALOG_TOKEN"] = "s3cret-token"

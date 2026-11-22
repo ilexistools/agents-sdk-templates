@@ -62,9 +62,28 @@ template updates without conflicts.
 | What | Where | Written by |
 |---|---|---|
 | Enabled flag, enabled channels, per-agent model | SQLite `.catalog.sqlite3` (`CATALOG_DB`) | Dashboard, API, CLI `enable`/`disable` |
+| Dashboard preferences (theme, filters panel, last view) | Same SQLite file, table `preferences` | Dashboard (`/api/preferences`) |
 | Provider keys, server addresses, default model, keys in `requires` | `.env` (`CATALOG_ENV_FILE`) | Settings dialog / `PUT /api/settings`, or by hand |
 | MCP transport, host and port (`MCP_*`) | `.env` | Settings → MCP server; read by `python -m app mcp` at startup |
 | Access token, read-only flag, host, port | Environment or `.env` | Operator only (never the dashboard) |
+
+Dashboard preferences are stored on the server too, in the `preferences` table of
+the same SQLite file (`app/preferences.py`, `GET`/`PUT /api/preferences`), so they
+survive cleared browser data and follow the installation to any browser:
+
+| Preference | Key | Notes |
+|---|---|---|
+| Theme | `theme` | `light`, `dark` or `system`. Cached in `localStorage` (`catalog.theme`) so the page renders in the right theme before the API answers |
+| Filters sidebar docked or collapsed | `filters_panel` | `expanded` or `collapsed`; cached in `localStorage` (`catalog.filters`) |
+| Last view: search, type, category, channel, status, open item | `view` | Restored on the bare address. The URL query (`?q=…&type=tool&item=<id>`) always wins, so a reload, bookmark or shared link shows exactly that view |
+| Channel picked under Actions | `bulk_channel` | `api`, `cli` or `mcp` |
+
+The dashboard has no user accounts, so preferences are shared by everyone using the
+installation. They are saved in batches (about 400 ms after the last change) and
+flushed when the page closes. Preferences are allowed even when Settings are
+read-only. On the first visit after an upgrade, values an older version kept only in
+the browser are copied to the server once, only for preferences the server does
+not have yet (`PUT /api/preferences?only_missing=true`), so they never overwrite it.
 
 - `load_environment()` loads `.env` without overriding variables already set, so
   real environment variables (Docker, hosting secrets) win.

@@ -1,9 +1,9 @@
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ValidationError
 
 from app.catalog import (
@@ -20,6 +20,7 @@ from app.catalog import (
     set_model_choice,
 )
 from app.orchestration.providers import PROVIDERS, ResolvedModel, list_models
+from app.preferences import get_preferences, update_preferences
 from app.security import settings_readonly
 from app.settings import providers_status, read_settings, update_settings, validate_model_ref
 
@@ -50,6 +51,18 @@ def get_item(item_id: str):
 def dashboard():
     # Revalidate on every visit so an updated dashboard is never served from the browser cache.
     return FileResponse(Path(__file__).with_name("catalog.html"), headers={"Cache-Control": "no-cache"})
+
+
+FAVICON = (
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='#2563eb'/>"
+    "<path d='M9 11h14M9 16h14M9 21h9' stroke='white' stroke-width='2.5' stroke-linecap='round'/></svg>"
+)
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    # Browsers request this path even when the page declares its icon inline.
+    return Response(FAVICON, media_type="image/svg+xml", headers={"Cache-Control": "max-age=86400"})
 
 
 @router.get("/api/catalog")
@@ -155,6 +168,24 @@ async def run_item(item_id: str, payload: dict):
 def get_settings():
     """Model provider settings. Secret values are never returned, only a masked hint."""
     return {"readonly": settings_readonly(), "fields": read_settings()}
+
+
+@router.get("/api/preferences")
+def get_dashboard_preferences():
+    """Dashboard preferences (theme, filters panel, last view), shared by this installation."""
+    return get_preferences()
+
+
+@router.put("/api/preferences")
+def put_dashboard_preferences(changes: dict[str, Any], only_missing: bool = False):
+    """Merge preferences; null removes one. ?only_missing=true never overwrites existing keys.
+
+    Allowed even when Settings are read-only.
+    """
+    try:
+        return update_preferences(changes, only_missing=only_missing)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/api/providers")

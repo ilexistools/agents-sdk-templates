@@ -42,12 +42,14 @@ Edit skills only in `.agents/skills/`, then run
 | `app/catalog_cli.py`, `app/catalog_mcp.py` | CLI and MCP channels |
 | `app/orchestration/providers.py` | Providers, `provider:model` references, `create_agent()` |
 | `app/settings.py`, `app/security.py` | Settings in `.env`; token and read-only mode |
+| `app/preferences.py` | Dashboard preferences (theme, filters panel, last view) in SQLite |
 | `app/tests/` | Offline tests (`test_catalog`, `test_deploy`, `test_project_knowledge`, ...) |
 
 ## Commands
 
 ```bash
 uv run --locked python -m app serve                    # dashboard + API, http://127.0.0.1:8787
+scripts/catalog.sh start | stop     (Windows: scripts\start.cmd, scripts\stop.cmd)  # background run
 uv run --locked python -m app catalog new tool <id> --title "<Title>"
 uv run --locked python -m app catalog new agent <id> --title "<Title>"
 uv run --locked python -m app catalog check            # validate every item

@@ -163,6 +163,7 @@ def connect():
         db.execute("CREATE TABLE IF NOT EXISTS activation (id TEXT PRIMARY KEY, active INTEGER NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS item_channels (id TEXT PRIMARY KEY, channels TEXT NOT NULL)")
         db.execute("CREATE TABLE IF NOT EXISTS item_models (id TEXT PRIMARY KEY, model TEXT NOT NULL)")
+        db.execute("CREATE TABLE IF NOT EXISTS preferences (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
     except Exception:
         db.close()
         raise

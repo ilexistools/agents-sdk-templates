@@ -1,0 +1,5 @@
+# Keep line endings correct for each platform's launch scripts.
+*.sh       text eol=lf
+*.command  text eol=lf
+*.cmd      text eol=crlf
+*.ps1      text eol=crlf

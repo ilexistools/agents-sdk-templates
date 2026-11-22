@@ -2,49 +2,64 @@
 
 ## Unreleased
 
-- Add bulk actions: an **Actions** section in the Filters sidebar enables or
-  disables all items shown, or turns a channel on or off for them, with Undo;
-  `PATCH /api/catalog` applies the same changes to several items (or all), and the
-  CLI's `enable`/`disable` accept several ids, `--all`, `--type` and `--channel`.
-- `catalog check` prints `FAIL` instead of the leftover Portuguese `FALHA`.
-- Move search and filters into a left **Filters** sidebar: docked by default,
-  collapsible to an icon rail with an active-filter badge (the choice is
-  remembered), a drawer on small screens, a "Clear filters" button and `/` to
-  search. The Category filter is always shown, listing every category with its count.
-- Add an **MCP server** section to Settings: transport (stdio, streamable-http,
-  sse), host and port, with the exact command or URL clients should use. The
-  catalog MCP server now loads `.env`, so these settings apply to
-  `python -m app mcp` without flags. `env-example` no longer sets
-  `MCP_TRANSPORT`; MCP clients that start the server should pass `--transport stdio`.
-- Serve the dashboard with `Cache-Control: no-cache`, so browsers never show a stale
-  copy after an update.
-- Fix the catalog MCP server over HTTP: `--transport streamable-http` and `sse`
-  failed at startup (`Server.run()` has no `transport` argument in MCP SDK 2).
-  Both now run under uvicorn, use `CATALOG_TOKEN` like the dashboard and refuse a
-  non-local host without it; the compose `mcp` profile passes the token.
-- Move the default ports away from the usual 8000/8001 so they do not clash with other
-  development servers: the dashboard/API now uses **8787** (was 8000) and the
-  catalog MCP server over HTTP **8888** (was 8001), including the Docker image and
-  compose file. Override them with `--port`, `PORT` or `MCP_PORT`.
-- Add `python -m app serve | mcp | catalog`, a single entry point that reads
-  `HOST`/`PORT` and refuses to listen on a non-local address without a token.
-- Add optional access protection: `CATALOG_TOKEN` requires a Bearer token or
-  Basic auth on every request except `GET /health`; `CATALOG_SETTINGS_READONLY`
-  makes Settings read-only. `.env` is loaded at startup so both can live there.
-- Add a `Dockerfile`, `.dockerignore` and `docker-compose.yml` (with an optional
-  MCP-over-HTTP profile) and a "Run and deploy" guide in the README.
+### Behavior changes (check when upgrading)
+
+- Default ports moved away from the usual 8000/8001: the dashboard/API now uses
+  **8787** and the catalog MCP server over HTTP **8888**, including the Docker image
+  and compose file. Override them with `--port`, `PORT` or `MCP_PORT`.
 - `GET /api/settings` now returns `{"readonly": ..., "fields": [...]}`.
-- Add knowledge for AI coding assistants: `docs/architecture.md`, a rewritten
-  `AGENTS.md` (project map, commands, rules, skill index), the
-  `catalog-create-item` skill with tool, agent and testing references, and the new
-  `catalog-review-item` and `catalog-extend-platform` skills.
-- Make every skill visible to Claude Code through generated `.claude/skills/`
-  pointers (`scripts/sync_skills.py`), checked by `app.tests.test_project_knowledge`.
-- Settings listed in an item's `requires` now appear in Settings automatically;
-  `requires` names must be `UPPER_SNAKE_CASE`, and `check` rejects provider keys there.
-- Add `ItemError` for expected item failures, shown by every channel; missing
-  settings are now checked in `execute`, so the CLI and MCP report them too.
-- `test_catalog` checks that every agent handler calls `create_agent` with its own id.
+- `requires` names in `item.toml` must be `UPPER_SNAKE_CASE`, and `catalog check`
+  rejects the model provider's key there (it is checked automatically).
+- The catalog MCP server loads `.env`, and `env-example` no longer enables
+  `MCP_TRANSPORT`. MCP clients that start the server should pass `--transport stdio`.
+- CLI `enable`/`disable` print the item's `active` state and `channels`, and a list
+  when several items are given.
+
+### Added
+
+- **Run anywhere:** `python -m app serve | mcp | catalog`; start/stop scripts for
+  Windows (`scripts/start.cmd`, `stop.cmd`) and macOS (`scripts/start.command`,
+  `stop.command`) built on `scripts/catalog.ps1` / `catalog.sh` (`start`, `stop`,
+  `status`, `restart`), which install dependencies on first use, wait for `/health`,
+  open the browser and keep logs and the PID in `.run/`; a `Dockerfile`,
+  `.dockerignore` and `docker-compose.yml` (with an MCP-over-HTTP profile); and a
+  "Run and deploy" guide in the README.
+- **Access protection:** `CATALOG_TOKEN` requires a Bearer token or Basic auth on
+  every request except `GET /health`, for the dashboard, API and MCP over HTTP; the
+  server refuses a non-local host without it. `CATALOG_SETTINGS_READONLY` makes
+  Settings read-only.
+- **Dashboard:** a left **Filters** sidebar (docked, collapsible to an icon rail, a
+  drawer on small screens, "Clear filters", `/` to search, a Category filter with
+  counts); bulk **Actions** to enable, disable or switch a channel for all items
+  shown, with Undo; an **Appearance** section in Settings (light, dark or system);
+  an **MCP server** section in Settings (transport, host, port and how clients
+  connect); a favicon.
+- **Preferences in SQLite:** theme, filters panel, last view (search, filters, open
+  item) and the Actions channel are stored in the catalog database
+  (`GET`/`PUT /api/preferences`). The URL keeps the current view for reloads,
+  bookmarks and links; the browser only caches the theme and panel state to avoid a
+  flash. Values older versions kept in the browser are migrated once.
+- **API and CLI:** `PATCH /api/catalog` changes several items (or all) at once; CLI
+  `enable`/`disable` accept several ids, `--all`, `--type` and `--channel`.
+- **Items:** settings listed in `requires` appear in Settings automatically;
+  `ItemError` reports expected failures with their message on every channel; missing
+  settings are checked in `execute`, so the CLI and MCP report them too.
+- **Knowledge for AI coding assistants:** `docs/architecture.md`, a rewritten
+  `AGENTS.md`, the `catalog-create-item` skill with tool, agent and testing
+  references, the `catalog-review-item` and `catalog-extend-platform` skills, and
+  Claude Code pointers in `.claude/skills/` generated by `scripts/sync_skills.py`.
+- **Tests:** `test_deploy` and `test_project_knowledge`; `test_catalog` also checks
+  that every agent handler calls `create_agent` with its own id.
+
+### Fixed
+
+- The catalog MCP server failed to start with `--transport streamable-http` or
+  `sse` (`Server.run()` has no `transport` argument in MCP SDK 2).
+- The dashboard is served with `Cache-Control: no-cache`, so browsers never show a
+  stale copy after an update.
+- `catalog check` printed the Portuguese `FALHA`; it now prints `FAIL`.
+- `PUT /api/preferences` returned a server error for non-text values; it now
+  returns a validation error.
 
 ## 0.8.0 — 2026-11-22
 

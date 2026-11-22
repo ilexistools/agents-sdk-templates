@@ -157,7 +157,7 @@ The application includes a catalog: every folder in `app/agents/` or `app/tools/
 
 | Channel | How to use it |
 |---|---|
-| Dashboard | http://127.0.0.1:8787: search and filter by type, category, channel and status in the left **Filters** sidebar (collapse it to an icon rail with its dock button; press `/` to search); open an item to see its contract, choose its model, run its examples and enable or disable it |
+| Dashboard | http://127.0.0.1:8787: search and filter by type, category, channel and status in the left **Filters** sidebar (collapse it to an icon rail with its dock button; press `/` to search); choose a light, dark or system theme in **Settings → Appearance**; filters and the open item are kept in the URL, so a reload or a shared link shows the same view, and preferences (theme, panel, last view) are saved in the catalog database, so they survive in any browser; open an item to see its contract, choose its model, run its examples and enable or disable it |
 | REST API | `GET /api/catalog`, `GET /api/catalog/{id}`, `POST /api/catalog/{id}/run`, `PATCH /api/catalog/{id}` (`{"active": false}`), `PATCH /api/catalog/{id}/channels`, `PATCH /api/catalog/{id}/model`, and `PATCH /api/catalog` for several items at once (`{"ids": [...], "active": true}`, `{"disable_channels": ["mcp"]}`; omit `ids` for every item) |
 | CLI | `uv run --locked python -m app.catalog_cli list \| check \| new \| run \| enable \| disable` |
 | MCP | `uv run --locked python -m app.catalog_mcp` (stdio by default; see below) |
@@ -188,7 +188,7 @@ uv run --locked python -m app.catalog_cli check
 uv run --locked python -m unittest app.tests.test_catalog -v
 ```
 
-**State.** Items start enabled. Enabled state, channels and per-agent model choices are stored in `.catalog.sqlite3` in the repository root (not versioned); point every process to another file with `CATALOG_DB`. Settings are stored in `.env`; use `CATALOG_ENV_FILE` to point to another file.
+**State.** Items start enabled. Enabled state, channels, per-agent model choices and dashboard preferences are stored in `.catalog.sqlite3` in the repository root (not versioned); point every process to another file with `CATALOG_DB`. Settings are stored in `.env`; use `CATALOG_ENV_FILE` to point to another file.
 
 **MCP server.** Choose the transport, host and port in the dashboard's **Settings → MCP server**; it shows the exact command or URL for clients. For a client that starts the server itself, configure `uv run --locked python -m app mcp --transport stdio` with the repository root as the working directory (always pass `--transport stdio` there, so a different default in Settings cannot break it). The server lists only items that are enabled with the MCP channel on; the client may need to refresh its tool list after a change. Three transports are available, selected by argument or by `MCP_TRANSPORT`, `MCP_HOST` and `MCP_PORT` (environment or `.env`):
 
@@ -229,7 +229,20 @@ Provider compatibility still varies: tools, handoffs, reasoning and JSON complia
 
 ## Run and deploy
 
-Once you have built your agents and tools, anyone with a copy of the project can run it in one of three ways.
+Once you have built your agents and tools, anyone with a copy of the project can run it in one of these ways.
+
+### Start and stop scripts (Windows and macOS)
+
+The simplest way on a desktop. They install the dependencies on first use (they need [uv](https://docs.astral.sh/uv/getting-started/installation/)), start the dashboard in the background, wait until it answers and open the browser.
+
+| System | Start | Stop |
+|---|---|---|
+| Windows | double-click `scripts\start.cmd` | double-click `scripts\stop.cmd` |
+| macOS | double-click `scripts/start.command` | double-click `scripts/stop.command` |
+| Terminal (macOS, Linux, Git Bash) | `scripts/catalog.sh start` | `scripts/catalog.sh stop` |
+| Terminal (PowerShell) | `powershell -ExecutionPolicy Bypass -File scripts\catalog.ps1 start` | `... catalog.ps1 stop` |
+
+Both scripts also accept `status` and `restart`, and `--no-browser` (`-NoBrowser` in PowerShell). The port comes from `PORT` (default 8787). Logs and the process id go to `.run/` (ignored by Git); if it does not start, the script shows the last log lines. A script only stops the server it started; if the port is already taken by something else, it says so instead of starting a second copy.
 
 ### On a computer, with uv
 
@@ -724,6 +737,7 @@ uv run --locked python -m app serve --reload
 | `POST /example` | Accepts a `data` object and returns a fixed sample message | No |
 | `/api/catalog/...` | Catalog listing, item contracts, state, channels, models and runs | Only `POST .../run` on an agent |
 | `GET`/`PUT /api/settings` | Read (keys masked) and update provider settings in `.env` | No |
+| `GET`/`PUT /api/preferences` | Dashboard preferences stored in the catalog database | No |
 | `GET /api/providers`, `POST /api/providers/{id}/models` | Provider status; connection test listing the provider's models | Lists models, no generation |
 | `GET /docs` | Interactive OpenAPI documentation | No |
 
@@ -868,6 +882,7 @@ For local demonstrations, review the Markdown models before execution. Always ru
 |   |-- catalog_mcp.py            # Catalog MCP server
 |   |-- security.py               # CATALOG_TOKEN and read-only Settings
 |   |-- settings.py               # Settings stored in .env (keys write-only)
+|   |-- preferences.py            # Dashboard preferences stored in SQLite
 |   |-- agents/<id>/              # Catalog agents: item.toml, handler.py, README.md
 |   |-- tools/<id>/               # Catalog tools: item.toml, handler.py, README.md
 |   |-- templates/catalog/        # Templates used by `catalog_cli new`
@@ -898,7 +913,11 @@ For local demonstrations, review the Markdown models before execution. Always ru
 |-- .python-version               # Preferred development interpreter
 |-- AGENTS.md, CLAUDE.md          # Rules for AI coding assistants
 |-- Dockerfile, docker-compose.yml # Container image and local deployment
-|-- scripts/sync_skills.py        # Regenerates .claude/skills from .agents/skills
+|-- scripts/
+|   |-- start.cmd, stop.cmd       # Windows: double-click to start/stop (calls catalog.ps1)
+|   |-- start.command, stop.command # macOS: double-click to start/stop (calls catalog.sh)
+|   |-- catalog.ps1, catalog.sh   # start | stop | status | restart
+|   `-- sync_skills.py            # Regenerates .claude/skills from .agents/skills
 |-- CHANGELOG.md
 |-- env-example
 |-- LICENSE
