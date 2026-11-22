@@ -35,6 +35,7 @@ h1{font-size:24px;letter-spacing:-.025em;margin:0;font-weight:650}
 .head-side{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .docs-link{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--accent-text);font-size:13px;font-weight:600;text-decoration:none}
 .docs-link:hover{background:var(--accent-soft);border-color:var(--accent)}
+.api-help{display:block;margin-top:8px;font-size:12px;color:var(--text-3)}
 .stats{display:flex;gap:8px}
 .icon-button{display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text-2);cursor:pointer}
 .icon-button:hover{background:var(--surface-2);color:var(--text)}
@@ -170,7 +171,6 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
 <div class="heading">
   <div><h1>Agents &amp; Tools</h1><p class="subtitle">Manage what is exposed through the API, CLI and MCP.</p></div>
   <div class="head-side">
-    <a class="docs-link" href="/docs" target="_blank" rel="noopener">API docs <span aria-hidden="true">↗</span></a>
     <div class="stats" id="stats"></div>
     <button type="button" class="icon-button" id="open-settings" aria-label="Settings" title="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -544,6 +544,17 @@ function drawSettings() {
     set.append(node('legend', group), ...fields.map(settingField));
     body.append(set);
   }
+  const api = document.createElement('fieldset');
+  const link = node('a', 'Open API docs ', 'docs-link');
+  link.href = '/docs';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  const arrow = node('span', '↗');
+  arrow.setAttribute('aria-hidden', 'true');
+  link.append(arrow);
+  const help = node('small', 'Interactive reference for the catalog and settings endpoints.', 'api-help');
+  api.append(node('legend', 'API'), link, help);
+  body.append(api);
 }
 async function openSettings() {
   for (const key of Object.keys(settingsChanges)) delete settingsChanges[key];
