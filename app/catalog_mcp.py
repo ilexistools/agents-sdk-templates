@@ -113,7 +113,7 @@ def main():
         "--transport",
         choices=("stdio", "streamable-http", "sse"),
         default=os.getenv("MCP_TRANSPORT", "stdio"),
-        help="MCP transport. Defaults to MCP_TRANSPORT (Settings → MCP server) or stdio.",
+        help="MCP transport. Defaults to MCP_TRANSPORT (Settings > MCP server) or stdio.",
     )
     parser.add_argument("--host", default=os.getenv("MCP_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.getenv("MCP_PORT", "8888")))

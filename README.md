@@ -1,14 +1,228 @@
-# OpenAI agents SDK templates
+# Agents SDK templates
 
-A Python starter project for building typed model integrations, agent workflows and decision-based routing. Run agents on OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Groq, OpenRouter, Ollama, LM Studio or any OpenAI-compatible server; publish them through a local dashboard, REST API, CLI and MCP server; add tools through MCP; or experiment with sandbox execution and reusable skills.
+**Build your own AI agents and tools in Python, and use them from a web dashboard, an API, the command line or any MCP client (Claude Code, Codex, Claude Desktop…).** Agents can run on OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Groq, OpenRouter or a model on your own computer (Ollama, LM Studio), and you switch models without changing code.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](pyproject.toml)
 [![Latest tag](https://img.shields.io/github/v/tag/ilexistools/agents-sdk-templates?label=version)](https://github.com/ilexistools/agents-sdk-templates/tags)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+[Quick start](#quick-start-5-minutes) · [How it works](#how-it-works) · [Your first tool](#create-your-first-tool) · [Your first agent](#create-your-first-agent) · [Use it from other apps](#use-it-from-other-apps) · [FAQ](#faq) · [Technical documentation](#technical-documentation) · [Changelog](CHANGELOG.md)
+
+This is a **template**: copy it, add your own agents and tools, and run or deploy the result. Everything you add appears automatically in the dashboard, with documentation and runnable examples generated from your code.
+
+## Quick start (5 minutes)
+
+You only need [uv](https://docs.astral.sh/uv/), a small tool that installs Python and the project's dependencies for you.
+
+**1. Install uv** (once per computer):
+
+| System | Command (in a terminal) |
+|---|---|
+| Windows (PowerShell) | `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 \| iex"` |
+| macOS / Linux | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
+
+**2. Get the project**, either with Git or by downloading it:
+
+```bash
+git clone https://github.com/ilexistools/agents-sdk-templates.git
+```
+
+or click **Code → Download ZIP** on GitHub and unzip it.
+
+**3. Start it** by double-clicking the start script in the `scripts` folder:
+
+| Windows | macOS |
+|---|---|
+| `scripts\start.cmd` | `scripts/start.command` |
+
+The first start installs everything (about a minute). Then your browser opens the dashboard at **http://127.0.0.1:8787**. To stop it, double-click `stop.cmd` or `stop.command`.
+
+**4. Try a tool.** Click **Word counter**, scroll to **Examples** and press **Run**. It works offline, with no account.
+
+**5. Connect a model** to use agents:
+
+1. Click the **gear icon** (Settings).
+2. Under **Providers**, open your provider (for example **OpenAI** or **Anthropic**), paste your API key and click **Test connection**. To use a free model on your own computer, install [Ollama](https://ollama.com), download a model (`ollama pull llama3.2`) and open the **Ollama** section instead: no key is needed.
+3. In **Default model**, write the model as `provider:model`, for example `openai:gpt-4.1-mini`, `anthropic:claude-sonnet-5-5` or `ollama:llama3.2`, and click **Save**.
+
+**6. Try an agent.** Open **Summarizer**, press **Run** on its example and get a summary written by the model you chose.
+
+That's it. Next, learn how the pieces fit, then build your own.
+
+## How it works
+
+```
+ You add files here             The template publishes them              You use them from
+┌────────────────────┐         ┌────────────────────────┐         ┌──────────────────────────┐
+│ app/tools/<name>/  │         │                        │  ─────▶ │ Dashboard (browser)      │
+│ app/agents/<name>/ │ ──────▶ │  Catalog: finds every  │  ─────▶ │ REST API (other apps)    │
+│  item.toml         │         │  item, checks it, runs │  ─────▶ │ CLI (terminal, scripts)  │
+│  handler.py        │         │  it on each channel    │  ─────▶ │ MCP (Claude Code, Codex) │
+│  README.md         │         │                        │         └──────────────────────────┘
+└────────────────────┘         └───────────┬────────────┘
+                                           │ agents only
+                                           ▼
+                               Model chosen in Settings
+                               (OpenAI, Anthropic, Ollama…)
+```
+
+| Word | What it means here |
+|---|---|
+| **Tool** | Ordinary Python code that always gives the same answer for the same input (count words, convert dates, call an API). No AI model involved. |
+| **Agent** | A task done by an AI model following written instructions (summarize, classify, review). Its answer is checked against the format you define. |
+| **Item** | A tool or an agent. Each lives in its own folder with three files: `item.toml` (name, description, examples), `handler.py` (the code and its input/output format) and `README.md` (how it works). |
+| **Catalog** | The part of the template that finds your items, validates them and makes them available. You never register anything by hand. |
+| **Channel** | A way to use an item: **API**, **CLI** or **MCP**. You can turn each one on or off per item in the dashboard. |
+| **Provider and model** | Where an agent's AI runs, written as `provider:model` (`openai:gpt-4.1-mini`, `ollama:llama3.2`). Choose a default in Settings or a different model per agent. |
+| **Settings** | The gear icon: API keys, models, the MCP server and the look of the dashboard. Keys are stored in the project's `.env` file and never shown again. |
+
+## Create your first tool
+
+A tool that converts text to title case ("hello world" → "Hello World").
+
+**1. Generate the files** (in a terminal, inside the project folder):
+
+```bash
+uv run --locked python -m app catalog new tool title_case --title "Title case"
+```
+
+This creates `app/tools/title_case/` with `item.toml`, `handler.py` and `README.md`, already filled with a working starting point.
+
+**2. Write the code** in `app/tools/title_case/handler.py`:
+
+```python
+from pydantic import BaseModel, Field
+
+
+class Input(BaseModel):
+    text: str = Field(min_length=1, max_length=10_000, description="Text to convert.")
+
+
+class Output(BaseModel):
+    result: str = Field(description="The text with every word capitalized.")
+
+
+async def run(request: Input) -> Output:
+    return Output(result=request.text.title())
+```
+
+`Input` and `Output` describe what the tool receives and returns; the `description` texts become the documentation shown in the dashboard and to MCP clients.
+
+**3. Describe it** in `app/tools/title_case/item.toml` (edit `description`, `icon`, `category` and the example):
+
+```toml
+description = "Converts text to title case."
+icon = "🔠"
+category = "Text"
+
+[[examples]]
+title = "Two words"
+input = { text = "hello world" }
+output = { result = "Hello World" }
+```
+
+**4. Check and try it:**
+
+```bash
+uv run --locked python -m app catalog check
+uv run --locked python -m app catalog run title_case --example 1
+```
+
+**5. See it in the dashboard:** reload the page. **Title case** is there, with its documentation and a **Run** button. It is also available through the API, the CLI and MCP.
+
+Finish by describing it in its `README.md`. The full rules (naming, versions, examples, tests) are in [docs/catalog-standards.md](docs/catalog-standards.md).
+
+## Create your first agent
+
+An agent is written mostly in plain language.
+
+```bash
+uv run --locked python -m app catalog new agent email_reply --title "Email reply"
+```
+
+1. Describe the input and output in `app/agents/email_reply/handler.py` (for example `Input.email` and `Output.reply`). The generated code already calls the model through `create_agent`, so it works with any provider.
+2. Write the instructions in `app/assets/agents/email_reply.md`: the role, the goal and a few clear rules ("reply in the language of the email", "never invent dates").
+3. Add a realistic example in `item.toml`, run `uv run --locked python -m app catalog check`, then press **Run** in the dashboard.
+4. To use a different model for this agent only, open it in the dashboard and choose one under **Model**.
+
+The [summarizer](app/agents/summarizer/README.md) is a complete, commented example.
+
+## Build with an AI coding assistant
+
+The project ships instructions and skills that teach Claude Code, Codex and similar assistants its conventions ([AGENTS.md](AGENTS.md)). Open the project folder in the assistant and ask in plain language, for example:
+
+- *"Add a tool that converts amounts between currencies using an exchange-rate API."*
+- *"Create an agent that classifies support tickets into billing, bug or question."*
+- *"Review the summarizer agent against the catalog standard."*
+
+The assistant uses the matching skill (`catalog-create-item`, `catalog-review-item`, `catalog-extend-platform`), runs the checks and writes the documentation. Review its changes as you would any code.
+
+## Use it from other apps
+
+**From an MCP client** (Claude Code, Codex, Claude Desktop…): the client starts the catalog itself. Replace `/path/to/project` with the project folder.
+
+Claude Code, file `.mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "agents-catalog": {
+      "command": "uv",
+      "args": ["run", "--locked", "--directory", "/path/to/project", "python", "-m", "app", "mcp", "--transport", "stdio"]
+    }
+  }
+}
+```
+
+Codex, file `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.agents-catalog]
+command = "uv"
+args = ["run", "--locked", "--directory", "/path/to/project", "python", "-m", "app", "mcp", "--transport", "stdio"]
+```
+
+Every enabled item with the MCP channel on becomes a tool the assistant can call. **Settings → MCP server** shows the command or URL for the transport you choose.
+
+**From another program**, call the REST API (interactive documentation at http://127.0.0.1:8787/docs):
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/catalog/word_count/run -H "Content-Type: application/json" -d "{\"text\": \"one two three\"}"
+```
+
+**From a terminal or script:**
+
+```bash
+uv run --locked python -m app catalog run word_count --input "{\"text\": \"one two three\"}"
+```
+
+## FAQ
+
+**Do I need to know how to program?** To use the dashboard, connect models and run the examples, no. To create tools you write a little Python; agents are mostly plain-language instructions. An AI coding assistant can do most of the work for you.
+
+**Do I need to pay for an AI model?** Tools never need one. Agents need a provider: hosted ones (OpenAI, Anthropic…) charge per use with your own key; Ollama and LM Studio run free models on your computer.
+
+**Is my API key safe?** It is stored only in the `.env` file of your copy of the project (never committed to Git) and is never shown again in the dashboard or the API.
+
+**Can other people use my dashboard?** By default it only accepts connections from your own computer. To share it on a network or a server, set an access token first; see [Run and deploy](#run-and-deploy).
+
+**Where are my choices saved?** Enabled items, channels, models and dashboard preferences are in `.catalog.sqlite3`; keys and settings in `.env`. Both files stay in the project folder and are ignored by Git.
+
+**The start script says the port is in use.** Another program uses port 8787. Stop it, or start on another port: `$env:PORT = '8790'; scripts\start.cmd` (Windows PowerShell) or `PORT=8790 scripts/catalog.sh start` (macOS).
+
+**macOS says the script cannot be opened.** Right-click `start.command` → **Open** the first time. If it is not executable after unzipping, run `chmod +x scripts/*.command scripts/catalog.sh` once.
+
+**How do I update to a newer version of the template?** Keep your work in `app/tools/`, `app/agents/` and `app/assets/agents/`, then pull or copy the new template files; the catalog core is designed so your items keep working. Check [CHANGELOG.md](CHANGELOG.md) for changes that need attention.
+
+---
+
+# Technical documentation
+
+Everything below is the complete reference: wrappers, configuration, providers, orchestration, MCP, deployment and tests.
+
 The template keeps orchestration visible in ordinary Python: wrappers handle model calls, Pydantic models describe outputs, Markdown files define agents, and application code controls execution. It is intended for learning, prototyping and adapting these patterns to your own application.
 
-[Getting started](#getting-started) · [Catalog](#catalog-of-agents-and-tools) · [Providers and models](#providers-and-models) · [Run and deploy](#run-and-deploy) · [Wrapper reference](#wrapper-reference) · [Decisions](#decisions-and-routing) · [Development skills](#skills-for-coding-agents) · [Changelog](CHANGELOG.md)
+[Getting started](#getting-started) · [Catalog](#catalog-of-agents-and-tools) · [Providers and models](#providers-and-models) · [Run and deploy](#run-and-deploy) · [Wrapper reference](#wrapper-reference) · [Decisions](#decisions-and-routing) · [Development skills](#skills-for-coding-agents)
 
 ## What you can build
 
@@ -25,6 +239,14 @@ The repository includes executable examples, offline regression tests, seven ski
 
 ## Contents
 
+- [Quick start (5 minutes)](#quick-start-5-minutes)
+- [How it works](#how-it-works)
+- [Create your first tool](#create-your-first-tool)
+- [Create your first agent](#create-your-first-agent)
+- [Build with an AI coding assistant](#build-with-an-ai-coding-assistant)
+- [Use it from other apps](#use-it-from-other-apps)
+- [FAQ](#faq)
+- **Technical documentation**
 - [Getting started](#getting-started)
 - [Catalog of agents and tools](#catalog-of-agents-and-tools)
 - [Providers and models](#providers-and-models)

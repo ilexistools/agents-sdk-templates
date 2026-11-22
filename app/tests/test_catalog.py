@@ -159,10 +159,13 @@ class CatalogStandardTests(unittest.TestCase):
                 catalog_cli.main()
             return jsonlib.loads(output.getvalue())
 
-        self.assertEqual({r["id"] for r in cli("disable", "--all")}, {"summarizer", "word_count"})
+        # Works with whatever items the project has, not only the bundled examples.
+        items = discover()
+        self.assertEqual({r["id"] for r in cli("disable", "--all")}, set(items))
         self.assertEqual(cli("enable", "word_count")["active"], True)
-        self.assertEqual(cli("disable", "--type", "tool", "--channel", "mcp"),
-                         [{"id": "word_count", "active": True, "channels": ["api", "cli"]}])
+        tools = {r["id"]: r for r in cli("disable", "--type", "tool", "--channel", "mcp")}
+        self.assertEqual(set(tools), {item_id for item_id, item in items.items() if item.type == "tool"})
+        self.assertEqual(tools["word_count"], {"id": "word_count", "active": True, "channels": ["api", "cli"]})
         with self.assertRaises(SystemExit):
             with redirect_stdout(io.StringIO()), patch.object(sys, "stderr", io.StringIO()):
                 cli("enable")

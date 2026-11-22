@@ -123,6 +123,14 @@ class DeployTests(unittest.TestCase):
         self.assertIn('PORT: "8787"', compose)
         self.assertIn("EXPOSE 8787", (ROOT / "Dockerfile").read_text(encoding="utf-8"))
 
+    def test_help_works_on_a_windows_console_encoding(self):
+        env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+        for args in (["serve"], ["mcp"], ["catalog"], ["catalog", "enable"], ["catalog", "new"]):
+            with self.subTest(args=args):
+                result = subprocess.run([sys.executable, "-m", "app", *args, "--help"], cwd=ROOT, env=env,
+                                        capture_output=True, text=True, encoding="cp1252", timeout=60)
+                self.assertEqual(result.returncode, 0, result.stderr[-300:])
+
     def test_loopback_detection(self):
         from app.__main__ import is_loopback
 
