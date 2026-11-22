@@ -47,7 +47,7 @@ Edit skills only in `.agents/skills/`, then run
 ## Commands
 
 ```bash
-uv run --locked python -m app serve                    # dashboard + API, http://127.0.0.1:8000
+uv run --locked python -m app serve                    # dashboard + API, http://127.0.0.1:8787
 uv run --locked python -m app catalog new tool <id> --title "<Title>"
 uv run --locked python -m app catalog new agent <id> --title "<Title>"
 uv run --locked python -m app catalog check            # validate every item

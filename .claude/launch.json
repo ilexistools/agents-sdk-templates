@@ -4,8 +4,8 @@
     {
       "name": "catalog",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "--locked", "python", "-m", "app", "serve", "--port", "8000"],
-      "port": 8000
+      "runtimeArgs": ["run", "--locked", "python", "-m", "app", "serve", "--port", "8787"],
+      "port": 8787
     }
   ]
 }

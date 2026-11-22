@@ -89,7 +89,9 @@ raise `RuntimeError("Missing setting: …")` before any network call.
 - With `CATALOG_TOKEN`, `app/security.py` requires it on every route except
   `GET /health` (Bearer, or Basic with the token as password).
 - `CATALOG_SETTINGS_READONLY=true` blocks `PUT /api/settings`.
-- The MCP HTTP transport is not covered by the token: keep it local.
+- The MCP HTTP transports (`/mcp`, `/sse`) use the same token middleware, and
+  `python -m app mcp` also refuses non-loopback hosts without `CATALOG_TOKEN`.
+  The stdio transport needs no token: it only talks to the process that started it.
 - Item code runs with the server's permissions. Items must not read secrets other
   than those in `requires`, write outside their folder, or execute untrusted input.
 

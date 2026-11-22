@@ -76,7 +76,7 @@ Or start the application:
 uv run --locked python -m app serve
 ```
 
-Open [the catalog dashboard](http://localhost:8000/), [the health endpoint](http://localhost:8000/health) or [the interactive API documentation](http://localhost:8000/docs). The `word_count` tool runs offline from the dashboard; agents need a provider (next step).
+Open [the catalog dashboard](http://localhost:8787/), [the health endpoint](http://localhost:8787/health) or [the interactive API documentation](http://localhost:8787/docs). The `word_count` tool runs offline from the dashboard; agents need a provider (next step).
 
 ### 3. Configure your provider
 
@@ -157,7 +157,7 @@ The application includes a catalog: every folder in `app/agents/` or `app/tools/
 
 | Channel | How to use it |
 |---|---|
-| Dashboard | http://127.0.0.1:8000: filter by type, category, channel and status; open an item to see its contract, choose its model, run its examples and enable or disable it |
+| Dashboard | http://127.0.0.1:8787: filter by type, category, channel and status; open an item to see its contract, choose its model, run its examples and enable or disable it |
 | REST API | `GET /api/catalog`, `GET /api/catalog/{id}`, `POST /api/catalog/{id}/run`, `PATCH /api/catalog/{id}` (`{"active": false}`), `PATCH /api/catalog/{id}/channels`, `PATCH /api/catalog/{id}/model` |
 | CLI | `uv run --locked python -m app.catalog_cli list \| check \| new \| run \| enable \| disable` |
 | MCP | `uv run --locked python -m app.catalog_mcp` (stdio by default; see below) |
@@ -189,11 +189,11 @@ uv run --locked python -m unittest app.tests.test_catalog -v
 
 ```powershell
 uv run --locked python -m app.catalog_mcp --transport stdio
-uv run --locked python -m app.catalog_mcp --transport streamable-http --host 127.0.0.1 --port 8001
-uv run --locked python -m app.catalog_mcp --transport sse --host 127.0.0.1 --port 8001
+uv run --locked python -m app.catalog_mcp --transport streamable-http --host 127.0.0.1 --port 8888
+uv run --locked python -m app.catalog_mcp --transport sse --host 127.0.0.1 --port 8888
 ```
 
-Streamable HTTP is served at `http://127.0.0.1:8001/mcp` and SSE at `http://127.0.0.1:8001/sse`. Configure Codex or Claude Code with stdio for a local subprocess, or with the HTTP MCP URL when the client and server can reach each other over the network. Restart the MCP server after changing Settings so it picks up new values.
+Streamable HTTP is served at `http://127.0.0.1:8888/mcp` and SSE at `http://127.0.0.1:8888/sse`. Like `serve`, the HTTP transports require `CATALOG_TOKEN` (sent as `Authorization: Bearer <token>`) when it is set, and refuse a non-local `--host` without it. Configure Codex or Claude Code with stdio for a local subprocess, or with the HTTP MCP URL when the client and server can reach each other over the network. Restart the MCP server after changing Settings so it picks up new values.
 
 AI coding assistants (Codex, Claude Code and others) get the same rules from [AGENTS.md](AGENTS.md)/[CLAUDE.md](CLAUDE.md), the [architecture guide](docs/architecture.md) and the `catalog-*` skills; see [Skills for coding agents](#skills-for-coding-agents).
 
@@ -230,7 +230,7 @@ Once you have built your agents and tools, anyone with a copy of the project can
 
 ```bash
 uv sync --locked
-uv run --locked python -m app serve                 # dashboard + API: http://127.0.0.1:8000
+uv run --locked python -m app serve                 # dashboard + API: http://127.0.0.1:8787
 uv run --locked python -m app mcp                   # MCP server for a local client (stdio)
 uv run --locked python -m app catalog list          # catalog CLI
 ```
@@ -253,18 +253,18 @@ The repository includes a [Dockerfile](Dockerfile) and [docker-compose.yml](dock
    docker compose up -d --build
    ```
 
-3. Open http://127.0.0.1:8000. The browser asks for a user name and password: use any user name and the token as the password.
+3. Open http://127.0.0.1:8787. The browser asks for a user name and password: use any user name and the token as the password.
 
 | Command | Effect |
 |---|---|
 | `docker compose up -d --build` | Build and start the dashboard + API |
-| `docker compose --profile mcp up -d --build` | Also start the MCP server over HTTP on `http://127.0.0.1:8001/mcp` |
+| `docker compose --profile mcp up -d --build` | Also start the MCP server over HTTP on `http://127.0.0.1:8888/mcp` |
 | `docker compose logs -f app` | Follow the logs |
 | `docker compose down` | Stop (catalog state and settings stay in the `data` volume) |
 
-Without Compose: `docker build -t my-agents .` then `docker run -p 127.0.0.1:8000:8000 -e CATALOG_TOKEN=... --env-file .env -v agents-data:/data my-agents`.
+Without Compose: `docker build -t my-agents .` then `docker run -p 127.0.0.1:8787:8787 -e CATALOG_TOKEN=... --env-file .env -v agents-data:/data my-agents`.
 
-The ports are published on `127.0.0.1` only. To reach the server from other machines, change the mapping to `"8000:8000"` and put it behind a reverse proxy with HTTPS. The MCP HTTP endpoint has no token, so keep it local or behind an authenticating proxy.
+The ports are published on `127.0.0.1` only. To reach the server from other machines, change the mapping to `"8787:8787"` and put it behind a reverse proxy with HTTPS. The MCP HTTP endpoint uses the same `CATALOG_TOKEN`: configure your MCP client to send `Authorization: Bearer <token>`.
 
 ### On a hosting platform
 
@@ -276,13 +276,13 @@ Any service that runs a Dockerfile (Render, Railway, Fly.io, Google Cloud Run, A
 |---|---|---|
 | `CATALOG_TOKEN` | Not set | When set, every request except `GET /health` needs it, as `Authorization: Bearer <token>` or Basic auth (any user, token as password) |
 | `CATALOG_SETTINGS_READONLY` | `false` | `true` blocks changes to Settings from the dashboard and API; keys come from the environment |
-| `HOST`, `PORT` | `127.0.0.1`, `8000` | Address used by `python -m app serve` (the image uses `0.0.0.0`) |
+| `HOST`, `PORT` | `127.0.0.1`, `8787` | Address used by `python -m app serve` (the image uses `0.0.0.0`) |
 | `CATALOG_DB`, `CATALOG_ENV_FILE` | Repository root | Catalog state and the settings file (`/data/...` in the image) |
 
 `python -m app serve` refuses to listen on a non-local address without `CATALOG_TOKEN`, because the dashboard can read and change API keys (pass `--insecure` only on isolated, trusted networks). Calling the API with a token:
 
 ```bash
-curl -H "Authorization: Bearer $CATALOG_TOKEN" http://127.0.0.1:8000/api/catalog
+curl -H "Authorization: Bearer $CATALOG_TOKEN" http://127.0.0.1:8787/api/catalog
 ```
 
 In Docker, values from `.env` are passed as environment variables and take precedence over keys later edited in Settings (which are saved to `/data/.env`). Use one or the other for each key.
@@ -632,7 +632,7 @@ uv run --locked python -m app.mcp_tools.server --transport sse
 uv run --locked python -m app.mcp_tools.server --transport stdio
 ```
 
-The SSE endpoint is `/sse`; stdio communicates through the process streams. The HTTP transports bind to `0.0.0.0:8000` in the example code. The default FastAPI server also uses port 8000, so change one port before running both HTTP services together.
+The SSE endpoint is `/sse`; stdio communicates through the process streams. The HTTP transports bind to `0.0.0.0:8000` in the example code. The catalog dashboard uses port 8787, so both can run together; the haiku demo below uses 8001.
 
 You can use the `MCP_TRANSPORT` process environment variable instead of the flag. Unlike the wrappers, this server does not load `.env` itself. To load it explicitly with uv:
 
@@ -725,7 +725,7 @@ uv run --locked python -m app serve --reload
 Example request from a POSIX shell:
 
 ```bash
-curl -X POST http://localhost:8000/example \
+curl -X POST http://localhost:8787/example \
   -H "Content-Type: application/json" \
   -d '{"data":{"message":"hello"}}'
 ```
@@ -733,7 +733,7 @@ curl -X POST http://localhost:8000/example \
 Windows PowerShell equivalent:
 
 ```powershell
-Invoke-RestMethod -Uri http://localhost:8000/example -Method Post -ContentType 'application/json' -Body '{"data":{"message":"hello"}}'
+Invoke-RestMethod -Uri http://localhost:8787/example -Method Post -ContentType 'application/json' -Body '{"data":{"message":"hello"}}'
 ```
 
 Response:
@@ -914,7 +914,7 @@ For local demonstrations, review the Markdown models before execution. Always ru
 | `run_sync()` fails in an active event loop | Use `await agent.run(...)` inside async functions |
 | MCP browser request returns `406` | Use a protocol-aware client with the appropriate headers and make a tool call |
 | MCP transport in `.env` is ignored | Pass `--transport`, export `MCP_TRANSPORT`, or load `.env` with `uv run --env-file .env` |
-| Address already in use | The sample API and MCP HTTP server both default to port 8000; change one port |
+| Address already in use | The dashboard defaults to 8787 and the catalog MCP server to 8888 (the sample MCP server uses 8000). Jupyter also defaults to 8888 and RStudio Server to 8787; pass `--port` or set `PORT` / `MCP_PORT` |
 | Sandbox rejects a `custom` tool | Check model capability and the resolved Markdown model, not just the sandbox fallback environment variable |
 | Unix-local sandbox error on Windows | Use the Docker backend or provide a supported client; verify optional dependencies and daemon availability |
 | Skill available but behavior does not show its use | Check a task-specific observable outcome or traces; loading is not proof of use |

@@ -1,9 +1,9 @@
 """Single entry point to run a project built from this template.
 
-    uv run python -m app serve              # dashboard + API on http://127.0.0.1:8000
+    uv run python -m app serve              # dashboard + API on http://127.0.0.1:8787
     uv run python -m app serve --host 0.0.0.0 --port 9000
     uv run python -m app mcp                # catalog MCP server (stdio)
-    uv run python -m app mcp --transport streamable-http --port 8001
+    uv run python -m app mcp --transport streamable-http --port 8888
     uv run python -m app catalog list       # catalog CLI (list, check, new, run, ...)
 
 Environment variables: HOST, PORT, CATALOG_TOKEN, CATALOG_SETTINGS_READONLY,
@@ -15,6 +15,7 @@ import ipaddress
 import os
 import sys
 
+DEFAULT_PORT = "8787"  # avoids the usual 8000/8001 used by many dev servers
 LOOPBACK_NAMES = {"localhost"}
 
 
@@ -30,7 +31,7 @@ def is_loopback(host: str) -> bool:
 def serve(argv: list[str]) -> None:
     parser = argparse.ArgumentParser(prog="python -m app serve", description="Run the dashboard and API.")
     parser.add_argument("--host", default=os.getenv("HOST", "127.0.0.1"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8000")))
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", DEFAULT_PORT)))
     parser.add_argument("--reload", action="store_true", help="Restart on code changes (development).")
     parser.add_argument(
         "--insecure",

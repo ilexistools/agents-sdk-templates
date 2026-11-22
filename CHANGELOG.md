@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fix the catalog MCP server over HTTP: `--transport streamable-http` and `sse`
+  failed at startup (`Server.run()` has no `transport` argument in MCP SDK 2).
+  Both now run under uvicorn, use `CATALOG_TOKEN` like the dashboard and refuse a
+  non-local host without it; the compose `mcp` profile passes the token.
+- Move the default ports away from the usual 8000/8001 so they do not clash with other
+  development servers: the dashboard/API now uses **8787** (was 8000) and the
+  catalog MCP server over HTTP **8888** (was 8001), including the Docker image and
+  compose file. Override them with `--port`, `PORT` or `MCP_PORT`.
 - Add `python -m app serve | mcp | catalog`, a single entry point that reads
   `HOST`/`PORT` and refuses to listen on a non-local address without a token.
 - Add optional access protection: `CATALOG_TOKEN` requires a Bearer token or

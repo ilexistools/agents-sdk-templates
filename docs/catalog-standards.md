@@ -1,7 +1,7 @@
 # Catalog standards for agents and tools
 
 This document defines how to create, document and publish items in the catalog
-dashboard (`http://127.0.0.1:8000`). It applies to developers and AI assistants.
+dashboard (`http://127.0.0.1:8787`). It applies to developers and AI assistants.
 The reference examples are the [`word_count`](../app/tools/word_count/README.md) tool
 and the [`summarizer`](../app/agents/summarizer/README.md) agent.
 
