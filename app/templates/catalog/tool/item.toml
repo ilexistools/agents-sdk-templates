@@ -1,0 +1,16 @@
+# Manifesto do item. Padrão completo: docs/padroes-catalogo.md
+id = "__ID__"
+type = "tool"
+title = "__TITLE__"                      # até 40 caracteres, substantivo curto
+description = "Descreva em uma frase o que a ferramenta faz."  # até 120 caracteres, começa com verbo
+icon = "🧩"                             # um emoji
+category = "Geral"                       # agrupa os itens na interface
+version = "0.1.0"                        # SemVer; suba a versão ao mudar Input/Output
+tags = []                                # até 6 palavras-chave em minúsculas
+requires = []                            # variáveis de ambiente obrigatórias, ex.: ["OPENAI_API_KEY"]
+channels = ["api", "cli", "mcp"]
+
+[[examples]]
+title = "Exemplo básico"
+input = { text = "um dois três" }
+output = { result = "um dois três" }     # opcional; validado pelos testes quando presente

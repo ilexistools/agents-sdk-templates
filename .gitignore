@@ -168,3 +168,4 @@ improved_results.txt
 config/improved_agent.yaml
 test.py
 tests.py
+.catalog.sqlite3*

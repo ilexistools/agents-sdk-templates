@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Agents &amp; Tools</title>
+<style>
+:root{
+  --bg:#f6f7f9;--surface:#fff;--surface-2:#f9fafb;--border:#e5e7eb;--border-strong:#d1d5db;
+  --text:#111827;--text-2:#4b5563;--text-3:#6b7280;
+  --accent:#2563eb;--accent-soft:#eff4ff;--accent-text:#1d4ed8;
+  --ok:#16a34a;--ok-soft:#ecfdf3;--ok-text:#15803d;--off:#9ca3af;--off-soft:#f3f4f6;
+  --danger:#dc2626;--agent:#7c3aed;--agent-soft:#f3efff;--tool:#0e7490;--tool-soft:#e8f7fa;
+  --shadow:0 1px 2px #1018280d,0 1px 3px #1018280f;--shadow-lg:-20px 0 50px #10182826;
+  --radius:12px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0d1117;--surface:#151a22;--surface-2:#1b212b;--border:#262d38;--border-strong:#374151;
+  --text:#e6e8eb;--text-2:#b4bac4;--text-3:#8b93a1;
+  --accent:#4f8cff;--accent-soft:#1b2a47;--accent-text:#8fb4ff;
+  --ok:#22c55e;--ok-soft:#12291c;--ok-text:#6ee7a0;--off:#6b7280;--off-soft:#20262f;
+  --danger:#f87171;--agent:#a78bfa;--agent-soft:#251d3d;--tool:#22b8cf;--tool-soft:#112b31;
+  --shadow:0 1px 2px #0006;--shadow-lg:-20px 0 50px #0009;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{max-width:980px;margin:auto;padding:32px clamp(16px,4vw,40px) 64px}
+
+/* Header */
+.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+h1{font-size:24px;letter-spacing:-.025em;margin:0;font-weight:650}
+.subtitle{margin:2px 0 0;color:var(--text-3);font-size:14px}
+.stats{display:flex;gap:8px}
+.stat{display:flex;flex-direction:column;align-items:center;padding:6px 12px;border:1px solid var(--border);background:var(--surface);border-radius:10px;min-width:72px}
+.stat b{font-size:17px;font-weight:650;line-height:1.2}
+.stat span{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em}
+
+/* Toolbar */
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px}
+.search{position:relative;flex:1 1 240px}
+.search svg{position:absolute;left:11px;top:50%;translate:0 -50%;width:16px;height:16px;color:var(--text-3);pointer-events:none}
+.search input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2)}
+.search input:focus{background:var(--surface);border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.segmented{display:inline-flex;padding:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px}
+.segmented button{border:0;background:none;padding:5px 12px;border-radius:7px;font-size:13px;color:var(--text-2);cursor:pointer}
+.segmented button[aria-pressed=true]{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow)}
+.toolbar select{padding:7px 30px 7px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font-size:13px;cursor:pointer}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+#feedback{margin:0 0 12px;padding:9px 12px;border-radius:9px;background:var(--accent-soft);color:var(--accent-text);font-size:13px}
+#feedback:empty{display:none}
+
+/* List */
+#cards{display:grid;gap:8px}
+article{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;column-gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s}
+article:hover{border-color:var(--border-strong);box-shadow:var(--shadow);transform:translateY(-1px)}
+article.inactive .icon,article.inactive h2{opacity:.55}
+.icon{display:grid;place-items:center;width:44px;height:44px;border-radius:11px;font-size:22px;background:var(--surface-2);border:1px solid var(--border)}
+.icon.agent{background:var(--agent-soft)}.icon.tool{background:var(--tool-soft)}
+.body{min-width:0}
+.title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
+.description{margin:2px 0 0;color:var(--text-3);font-size:13px;line-height:1.4}
+.meta{display:flex;align-items:center;gap:10px}
+.chips{display:flex;gap:4px}
+.chip{font:600 10.5px/1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.04em;padding:4px 6px;border-radius:5px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2)}
+.kind{font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px}
+.kind.agent{background:var(--agent-soft);color:var(--agent)}.kind.tool{background:var(--tool-soft);color:var(--tool)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:3px 9px 3px 8px;border-radius:20px;background:var(--off-soft);color:var(--text-3);white-space:nowrap}
+.status i{width:7px;height:7px;border-radius:50%;background:var(--off)}
+.status.on{background:var(--ok-soft);color:var(--ok-text)}.status.on i{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 22%,transparent)}
+.empty{padding:48px 16px;text-align:center;color:var(--text-3);border:1px dashed var(--border-strong);border-radius:var(--radius)}
+.empty b{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+
+/* Sidebar */
+.backdrop{position:fixed;inset:0;background:#0b122080;backdrop-filter:blur(2px);opacity:0;visibility:hidden;transition:opacity .2s;z-index:4}
+.backdrop.open{opacity:1;visibility:visible}
+.sidebar{position:fixed;z-index:5;right:0;top:0;height:100dvh;width:min(440px,100vw);display:flex;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--shadow-lg);transform:translateX(102%);transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.sidebar.open{transform:none}
+.side-head{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+.close{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text-2);font-size:20px;cursor:pointer}
+.close:hover{background:var(--surface-2)}
+.side-body{flex:1;overflow:auto;padding:24px 20px}
+.side-title{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.icon.large{width:56px;height:56px;font-size:28px;border-radius:14px}
+.side-title h2{font-size:21px;letter-spacing:-.02em}
+.side-id{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text-3)}
+.side-description{color:var(--text-2);font-size:14px;margin:0 0 20px}
+.side-section{padding:18px 0;border-top:1px solid var(--border)}
+.side-section h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin:0 0 12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.row p{margin:0;font-size:14px}.row small{display:block;color:var(--text-3);font-size:12px}
+.switch{position:relative;width:42px;height:24px;flex:none;border:0;border-radius:20px;background:var(--border-strong);cursor:pointer;transition:background .18s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0003;transition:translate .18s}
+.switch[aria-checked=true]{background:var(--ok)}.switch[aria-checked=true]::after{translate:18px 0}
+.switch:disabled{opacity:.5;cursor:wait}
+.channel-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.channel-option{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace;cursor:pointer;transition:border-color .15s,background .15s}
+.channel-option:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text)}
+.channel-option:has(input:disabled){opacity:.6;cursor:wait}
+.channel-option input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
+.action{display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface);font-size:14px;cursor:pointer;text-align:left}
+.action:hover{background:var(--surface-2);border-color:var(--border-strong)}
+.side-feedback{min-height:18px;color:var(--danger);font-size:12px;margin:8px 0 0}
+.group-title{display:flex;align-items:center;gap:8px;margin:18px 2px 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3)}
+.group-title:first-child{margin-top:0}
+.group-title span{font-weight:500;letter-spacing:0}
+.facts{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 20px}
+.fact{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2)}
+.warning{margin:0 0 20px;padding:10px 12px;border-radius:10px;font-size:13px;background:#fff7e6;color:#8a5a00;border:1px solid #f5d9a0}
+@media (prefers-color-scheme:dark){.warning{background:#2b2210;color:#f3c776;border-color:#5a4520}}
+.fields{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.fields li{padding:9px 11px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.fields code{font:600 13px ui-monospace,SFMono-Regular,Consolas,monospace}
+.fields em{font-style:normal;font-size:11px;color:var(--text-3);margin-left:6px}
+.fields p{margin:3px 0 0;font-size:13px;color:var(--text-2)}
+.sub{font-size:12px;font-weight:600;color:var(--text-2);margin:14px 0 8px}
+.sub:first-of-type{margin-top:0}
+.example{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.example-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 8px 8px 12px;background:var(--surface-2);border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+.example pre{margin:0;padding:10px 12px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text-2)}
+.example pre.result{border-top:1px dashed var(--border);color:var(--text)}
+.example pre.result.error{color:var(--danger)}
+.run{padding:5px 12px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+.run:disabled{opacity:.5;cursor:not-allowed}
+
+@media (max-width:640px){
+  main{padding-top:20px}
+  .heading{flex-direction:column;align-items:flex-start}
+  .toolbar>*{flex:1 1 auto}
+  article{grid-template-columns:40px minmax(0,1fr);row-gap:10px;padding:12px}
+  .icon{width:40px;height:40px}
+  .meta{grid-column:2;justify-content:space-between}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<main>
+<div class="heading">
+  <div><h1>Agents &amp; Tools</h1><p class="subtitle">Manage what is exposed through the API, CLI and MCP.</p></div>
+  <div class="stats" id="stats"></div>
+</div>
+<div class="toolbar" role="search">
+  <label class="search"><span class="sr-only">Search</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="search" type="search" placeholder="Search by name or description" autocomplete="off">
+  </label>
+  <div class="segmented" role="group" aria-label="Type" id="kind">
+    <button type="button" data-value="" aria-pressed="true">All</button>
+    <button type="button" data-value="agent" aria-pressed="false">Agents</button>
+    <button type="button" data-value="tool" aria-pressed="false">Tools</button>
+  </div>
+  <label><span class="sr-only">Channel</span><select id="channel"><option value="">All channels</option><option>API</option><option>CLI</option><option>MCP</option></select></label>
+  <label><span class="sr-only">Status</span><select id="status"><option value="">Any status</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
+</div>
+<p id="feedback" role="status"></p>
+<section id="cards" aria-label="Catalog items"></section>
+</main>
+<div class="backdrop" id="backdrop"></div>
+<aside class="sidebar" id="sidebar" role="dialog" aria-modal="true" aria-labelledby="side-title" aria-hidden="true"></aside>
+<script>
+const byId = id => document.getElementById(id);
+const cards = byId('cards');
+const feedback = byId('feedback');
+const sidebar = byId('sidebar');
+const backdrop = byId('backdrop');
+let items = [];
+let selected = null;
+let kind = '';
+function node(tag, text, className) {
+  const element = document.createElement(tag);
+  element.textContent = text;
+  if (className) element.className = className;
+  return element;
+}
+function statusBadge(active) {
+  const status = node('span', '', 'status' + (active ? ' on' : ''));
+  status.append(node('i', ''), node('span', active ? 'Active' : 'Inactive'));
+  return status;
+}
+function chips(channels) {
+  const list = node('span', '', 'chips');
+  for (const channel of [...channels].sort()) list.append(node('span', channel.toUpperCase(), 'chip'));
+  return list;
+}
+function renderStats() {
+  const stats = byId('stats');
+  const stat = (value, label) => { const box = node('div', '', 'stat'); box.append(node('b', value), node('span', label)); return box; };
+  stats.replaceChildren(
+    stat(items.filter(item => item.type === 'agent').length, 'Agents'),
+    stat(items.filter(item => item.type === 'tool').length, 'Tools'),
+    stat(items.filter(item => item.active).length, 'Active'));
+}
+function render() {
+  const query = byId('search').value.trim().toLocaleLowerCase();
+  const channel = byId('channel').value.toLowerCase();
+  const status = byId('status').value;
+  const visible = items.filter(item =>
+    [item.title, item.description, item.id, item.category, ...(item.tags || [])].join(' ').toLocaleLowerCase().includes(query)
+    && (!kind || item.type === kind)
+    && (!channel || item.channels.includes(channel))
+    && (!status || String(item.active) === status));
+  renderStats();
+  const groups = new Map();
+  for (const item of [...visible].sort((a, b) => a.category.localeCompare(b.category) || a.title.localeCompare(b.title))) {
+    if (!groups.has(item.category)) groups.set(item.category, []);
+    groups.get(item.category).push(item);
+  }
+  cards.replaceChildren();
+  for (const [category, members] of groups) {
+    const title = node('h3', category, 'group-title');
+    title.append(node('span', '· ' + members.length));
+    cards.append(title, ...members.map(card));
+  }
+  if (!visible.length) {
+    const empty = node('div', '', 'empty');
+    empty.append(node('b', 'No items found'), node('span', 'Try a different search or clear the filters.'));
+    cards.append(empty);
+  }
+}
+function card(item) {
+  const row = node('article', '', item.active ? '' : 'inactive');
+  row.tabIndex = 0;
+  row.setAttribute('role', 'button');
+  row.setAttribute('aria-label', item.title + '. ' + item.description);
+  const icon = node('span', item.icon, 'icon ' + item.type);
+  icon.setAttribute('aria-hidden', 'true');
+  const body = node('div', '', 'body');
+  const titleRow = node('div', '', 'title-row');
+  titleRow.append(node('h2', item.title), node('span', item.type === 'agent' ? 'Agent' : 'Tool', 'kind ' + item.type));
+  body.append(titleRow, node('p', item.description, 'description'));
+  const meta = node('div', '', 'meta');
+  meta.append(chips(item.channels), statusBadge(item.active));
+  row.append(icon, body, meta);
+  row.onclick = () => openSidebar(item);
+  row.onkeydown = event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSidebar(item); }
+  };
+  return row;
+}
+const details = {};
+async function loadDetails(item) {
+  if (details[item.id]) return;
+  try {
+    const response = await fetch('/api/catalog/' + encodeURIComponent(item.id));
+    if (!response.ok) throw Error();
+    details[item.id] = await response.json();
+  } catch {
+    details[item.id] = {error: true};
+  }
+  if (selected === item) { drawSidebar(); byId('close-sidebar').focus(); }
+}
+function fieldList(fields) {
+  const list = node('ul', '', 'fields');
+  for (const field of fields) {
+    const entry = node('li', '');
+    entry.append(node('code', field.name), node('em', field.type + (field.required ? ' · required' : ' · optional')));
+    if (field.description) entry.append(node('p', field.description));
+    list.append(entry);
+  }
+  return list;
+}
+function docsSection(item) {
+  const section = node('section', '', 'side-section');
+  section.append(node('h3', 'Contract'));
+  const info = details[item.id];
+  if (!info) { section.append(node('p', 'Loading…', 'side-description')); return section; }
+  if (info.error) { section.append(node('p', 'Could not load the contract.', 'side-feedback')); return section; }
+  section.append(node('p', 'Input', 'sub'), fieldList(info.input), node('p', 'Output', 'sub'), fieldList(info.output));
+  return section;
+}
+function examplesSection(item) {
+  const section = node('section', '', 'side-section');
+  section.append(node('h3', 'Examples'));
+  const runnable = item.active && item.channels.includes('api');
+  for (const example of item.examples) {
+    const box = node('div', '', 'example');
+    const head = node('div', example.title, 'example-head');
+    const run = node('button', 'Run', 'run');
+    run.disabled = !runnable;
+    run.title = runnable ? 'Run through the API channel' : 'Enable the item and the API channel to run';
+    head.append(run);
+    const result = node('pre', '', 'result');
+    result.hidden = true;
+    run.onclick = async () => {
+      run.disabled = true;
+      result.hidden = false;
+      result.className = 'result';
+      result.textContent = 'Running…';
+      try {
+        const response = await fetch('/api/catalog/' + encodeURIComponent(item.id) + '/run', {
+          method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(example.input)
+        });
+        const body = await response.json();
+        if (!response.ok) throw Error(typeof body.detail === 'string' ? body.detail : 'HTTP ' + response.status);
+        result.textContent = '→ ' + JSON.stringify(body, null, 2);
+      } catch (error) {
+        result.className = 'result error';
+        result.textContent = error.message || 'Execution failed.';
+      }
+      run.disabled = false;
+    };
+    box.append(head, node('pre', JSON.stringify(example.input, null, 2)));
+    if (example.output) box.append(node('pre', '→ expected ' + JSON.stringify(example.output)));
+    box.append(result);
+    section.append(box);
+  }
+  return section;
+}
+function openSidebar(item) {
+  selected = item;
+  loadDetails(item);
+  drawSidebar();
+  sidebar.classList.add('open');
+  sidebar.setAttribute('aria-hidden', 'false');
+  backdrop.classList.add('open');
+  byId('close-sidebar').focus();
+}
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  sidebar.setAttribute('aria-hidden', 'true');
+  backdrop.classList.remove('open');
+  selected = null;
+}
+function drawSidebar() {
+  const item = selected;
+  if (!item) return;
+  const head = node('div', '', 'side-head');
+  head.append(node('span', item.type === 'agent' ? 'Agent' : 'Tool', 'kind ' + item.type));
+  const close = node('button', '×', 'close');
+  close.id = 'close-sidebar';
+  close.setAttribute('aria-label', 'Close panel');
+  close.onclick = closeSidebar;
+  head.append(close);
+
+  const body = node('div', '', 'side-body');
+  const title = node('div', '', 'side-title');
+  title.append(node('span', item.icon, 'icon large ' + item.type));
+  const heading = node('div', '');
+  const h2 = node('h2', item.title);
+  h2.id = 'side-title';
+  heading.append(h2, node('span', item.id, 'side-id'));
+  title.append(heading);
+  const description = node('p', item.description, 'side-description');
+  const facts = node('div', '', 'facts');
+  for (const text of ['v' + item.version, item.category, ...(item.tags || []).map(tag => '#' + tag)]) facts.append(node('span', text, 'fact'));
+  const missing = (details[item.id] && details[item.id].missing_requirements) || [];
+  const warning = missing.length ? node('p', 'Missing environment variable: ' + missing.join(', ') + '. Runs will fail until it is set in .env.', 'warning') : null;
+
+  const statusSection = node('section', '', 'side-section');
+  statusSection.append(node('h3', 'Status'));
+  const statusRow = node('div', '', 'row');
+  const statusText = node('p', item.active ? 'Enabled' : 'Disabled');
+  statusText.append(node('small', item.active ? 'Available on the selected channels.' : 'Hidden from every channel.'));
+  const toggle = node('button', '', 'switch');
+  toggle.setAttribute('role', 'switch');
+  toggle.setAttribute('aria-checked', String(item.active));
+  toggle.setAttribute('aria-label', 'Active');
+  toggle.onclick = () => setActive(item, toggle);
+  statusRow.append(statusText, toggle);
+  const message = node('p', '', 'side-feedback');
+  message.id = 'side-feedback';
+  statusSection.append(statusRow, message);
+
+  const channelSection = node('section', '', 'side-section');
+  channelSection.append(node('h3', 'Channels'));
+  const options = node('div', '', 'channel-options');
+  for (const channel of (item.available_channels || item.channels)) {
+    const label = node('label', '', 'channel-option');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = channel;
+    checkbox.checked = item.channels.includes(channel);
+    checkbox.onchange = () => setChannels(item, options);
+    label.append(checkbox, node('span', channel.toUpperCase()));
+    options.append(label);
+  }
+  const channelMessage = node('p', '', 'side-feedback');
+  channelMessage.id = 'channel-feedback';
+  channelSection.append(options, channelMessage);
+
+  body.append(title, description, facts);
+  if (warning) body.append(warning);
+  body.append(statusSection, channelSection, docsSection(item), examplesSection(item));
+  if (item.active && item.channels.includes('api')) {
+    const actions = node('section', '', 'side-section');
+    actions.append(node('h3', 'Links'));
+    const api = node('button', 'Open API docs', 'action');
+    api.append(node('span', '↗'));
+    api.onclick = () => window.open('/docs', '_blank', 'noopener');
+    actions.append(api);
+    body.append(actions);
+  }
+  sidebar.replaceChildren(head, body);
+}
+async function setChannels(item, options) {
+  const checkboxes = [...options.querySelectorAll('input')];
+  const channels = checkboxes.filter(input => input.checked).map(input => input.value);
+  checkboxes.forEach(input => input.disabled = true);
+  try {
+    const response = await fetch('/api/catalog/' + encodeURIComponent(item.id) + '/channels', {
+      method: 'PATCH', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({channels})
+    });
+    if (!response.ok) throw Error();
+    const result = await response.json();
+    item.channels = result.channels;
+    render();
+    drawSidebar();
+    byId('close-sidebar').focus();
+  } catch {
+    byId('channel-feedback').textContent = 'Could not update channels.';
+    checkboxes.forEach(input => input.disabled = false);
+  }
+}
+async function setActive(item, button) {
+  button.disabled = true;
+  try {
+    const response = await fetch('/api/catalog/' + encodeURIComponent(item.id), {
+      method: 'PATCH', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({active: !item.active})
+    });
+    if (!response.ok) throw Error();
+    item.active = (await response.json()).active;
+    feedback.textContent = item.title + (item.active ? ' enabled.' : ' disabled.');
+    render();
+    drawSidebar();
+    byId('close-sidebar').focus();
+  } catch {
+    byId('side-feedback').textContent = 'Could not update status.';
+    button.disabled = false;
+  }
+}
+for (const id of ['search', 'channel', 'status']) byId(id).addEventListener('input', render);
+byId('kind').addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  kind = button.dataset.value;
+  for (const option of byId('kind').children) option.setAttribute('aria-pressed', String(option === button));
+  render();
+});
+backdrop.onclick = closeSidebar;
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSidebar(); });
+(async () => {
+  feedback.textContent = 'Loading catalog…';
+  try {
+    const response = await fetch('/api/catalog');
+    if (!response.ok) throw Error();
+    items = await response.json();
+    feedback.textContent = '';
+    render();
+  } catch {
+    feedback.textContent = 'Could not load the catalog.';
+  }
+})();
+</script>
+</html>

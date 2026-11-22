@@ -1,0 +1,20 @@
+id = "word_count"
+type = "tool"
+title = "Contador de palavras"
+description = "Conta palavras e caracteres sem espaços."
+icon = "🔢"
+category = "Texto"
+version = "1.0.0"
+tags = ["texto", "offline"]
+requires = []
+channels = ["api", "cli", "mcp"]
+
+[[examples]]
+title = "Frase curta"
+input = { text = "um dois três" }
+output = { word_count = 3, character_count = 10 }
+
+[[examples]]
+title = "Espaços extras e quebras de linha"
+input = { text = "  olá   mundo\nnovo  " }
+output = { word_count = 3, character_count = 12 }

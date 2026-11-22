@@ -1,13 +1,16 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+from app.catalog_api import router
+
 class InputRequest(BaseModel):
     data: dict
     
 class OutputResponse(BaseModel):
     data: dict
     
-app = FastAPI(title="GPT Agents + FastAPI Example")
+app = FastAPI(title='MCP Library')
+app.include_router(router)
 
 @app.get("/health")
 async def health() -> dict[str, str]:

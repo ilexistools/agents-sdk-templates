@@ -1,0 +1,14 @@
+id = "summarizer"
+type = "agent"
+title = "Resumidor"
+description = "Resume textos no idioma original, preservando os pontos principais."
+icon = "📝"
+category = "Texto"
+version = "1.0.0"
+tags = ["texto", "llm"]
+requires = ["OPENAI_API_KEY"]
+channels = ["api", "cli", "mcp"]
+
+[[examples]]
+title = "Parágrafo informativo"
+input = { text = "A reunião de ontem aprovou o orçamento de 2027, com aumento de 8% em pesquisa. O corte em viagens foi adiado até a revisão de março, pois a diretoria pediu novos dados." }
