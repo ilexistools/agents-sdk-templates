@@ -36,6 +36,35 @@ h1{font-size:24px;letter-spacing:-.025em;margin:0;font-weight:650}
 .docs-link{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--accent-text);font-size:13px;font-weight:600;text-decoration:none}
 .docs-link:hover{background:var(--accent-soft);border-color:var(--accent)}
 .stats{display:flex;gap:8px}
+.icon-button{display:grid;place-items:center;width:42px;height:42px;padding:0;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text-2);cursor:pointer}
+.icon-button:hover{background:var(--surface-2);color:var(--text)}
+.icon-button svg{width:20px;height:20px}
+dialog.settings{width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 48px);padding:0;border:1px solid var(--border);border-radius:16px;background:var(--surface);color:var(--text);box-shadow:0 24px 60px #10182840}
+dialog.settings::backdrop{background:#0b122080;backdrop-filter:blur(2px)}
+dialog.settings form{display:flex;flex-direction:column;max-height:calc(100dvh - 50px)}
+.dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid var(--border)}
+.dialog-head h2{font-size:18px}.dialog-head p{margin:2px 0 0;font-size:13px;color:var(--text-3)}
+.dialog-body{overflow:auto;padding:4px 20px 8px}
+.dialog-body fieldset{border:0;padding:16px 0;margin:0;border-bottom:1px solid var(--border)}
+.dialog-body fieldset:last-child{border-bottom:0}
+.dialog-body legend{padding:0;margin-bottom:12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3)}
+.setting{display:grid;gap:5px;margin-bottom:14px}
+.setting:last-child{margin-bottom:0}
+.setting-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:600}
+.setting-label code{font:500 11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text-3)}
+.setting-row{display:flex;gap:6px}
+.setting input,.setting select{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);font-size:14px}
+.setting input:focus,.setting select:focus{outline:none;border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
+.setting small{font-size:12px;color:var(--text-3)}
+.setting .badge{font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;background:var(--off-soft);color:var(--text-3)}
+.setting .badge.ok{background:var(--ok-soft);color:var(--ok-text)}
+.ghost{padding:7px 10px;border:1px solid var(--border);border-radius:9px;background:var(--surface);font-size:12px;color:var(--text-2);cursor:pointer}
+.ghost:hover{background:var(--surface-2)}
+.dialog-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-top:1px solid var(--border);background:var(--surface-2);border-radius:0 0 16px 16px}
+.dialog-foot p{margin:0;font-size:12px;color:var(--text-3)}
+.dialog-foot p.error{color:var(--danger)}.dialog-foot p.saved{color:var(--ok-text)}
+.primary{padding:8px 16px;border:1px solid var(--accent);border-radius:9px;background:var(--accent);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.primary:disabled{opacity:.6;cursor:wait}
 .stat{display:flex;flex-direction:column;align-items:center;padding:6px 12px;border:1px solid var(--border);background:var(--surface);border-radius:10px;min-width:72px}
 .stat b{font-size:17px;font-weight:650;line-height:1.2}
 .stat span{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em}
@@ -143,6 +172,9 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
   <div class="head-side">
     <a class="docs-link" href="/docs" target="_blank" rel="noopener">API docs <span aria-hidden="true">↗</span></a>
     <div class="stats" id="stats"></div>
+    <button type="button" class="icon-button" id="open-settings" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
   </div>
 </div>
 <div class="toolbar" role="search">
@@ -163,6 +195,19 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
 </main>
 <div class="backdrop" id="backdrop"></div>
 <aside class="sidebar" id="sidebar" role="dialog" aria-modal="true" aria-labelledby="side-title" aria-hidden="true"></aside>
+<dialog class="settings" id="settings" aria-labelledby="settings-title">
+  <form id="settings-form" novalidate>
+    <div class="dialog-head">
+      <div><h2 id="settings-title">Settings</h2><p>Credentials and models used to run agents. Saved to the project's <code>.env</code> file.</p></div>
+      <button type="button" class="close" id="close-settings" aria-label="Close settings">×</button>
+    </div>
+    <div class="dialog-body" id="settings-fields"></div>
+    <div class="dialog-foot">
+      <p id="settings-status" role="status">API keys are never shown again after saving.</p>
+      <button type="submit" class="primary" id="save-settings">Save</button>
+    </div>
+  </form>
+</dialog>
 <script>
 const byId = id => document.getElementById(id);
 const cards = byId('cards');
@@ -350,7 +395,14 @@ function drawSidebar() {
   const facts = node('div', '', 'facts');
   for (const text of ['v' + item.version, item.category, ...(item.tags || []).map(tag => '#' + tag)]) facts.append(node('span', text, 'fact'));
   const missing = (details[item.id] && details[item.id].missing_requirements) || [];
-  const warning = missing.length ? node('p', 'Missing environment variable: ' + missing.join(', ') + '. Runs will fail until it is set in .env.', 'warning') : null;
+  let warning = null;
+  if (missing.length) {
+    warning = node('p', 'Missing setting: ' + missing.join(', ') + '. Runs will fail until it is provided. ', 'warning');
+    const link = node('button', 'Open Settings', 'ghost');
+    link.type = 'button';
+    link.onclick = openSettings;
+    warning.append(link);
+  }
 
   const statusSection = node('section', '', 'side-section');
   statusSection.append(node('h3', 'Status'));
@@ -435,8 +487,111 @@ byId('kind').addEventListener('click', event => {
   for (const option of byId('kind').children) option.setAttribute('aria-pressed', String(option === button));
   render();
 });
+const settingsDialog = byId('settings');
+const settingsStatus = byId('settings-status');
+let settings = [];
+const settingsChanges = {};
+function settingsMessage(text, kind) {
+  settingsStatus.textContent = text;
+  settingsStatus.className = kind || '';
+}
+function settingField(field) {
+  const wrap = node('div', '', 'setting');
+  const inputId = 'setting-' + field.key;
+  const label = node('label', '', 'setting-label');
+  label.htmlFor = inputId;
+  const name = node('span', field.label + ' ');
+  name.append(node('code', field.key));
+  label.append(name);
+  if (field.secret) label.append(node('span', field.set ? 'Saved ' + field.hint : 'Not set', 'badge' + (field.set ? ' ok' : '')));
+  else if (field.source !== 'default') label.append(node('span', field.source === 'env file' ? 'Custom' : 'From environment', 'badge ok'));
+  const row = node('div', '', 'setting-row');
+  let input;
+  if (field.choices) {
+    input = document.createElement('select');
+    for (const choice of field.choices) input.append(node('option', choice));
+    input.value = field.value || field.default;
+  } else {
+    input = document.createElement('input');
+    input.type = field.secret ? 'password' : 'text';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    if (field.secret) input.placeholder = field.set ? 'Leave empty to keep the saved key' : 'Paste the key';
+    else { input.value = field.value; input.placeholder = field.default; }
+  }
+  input.id = inputId;
+  input.oninput = () => { settingsChanges[field.key] = input.value.trim(); settingsMessage('Unsaved changes.'); };
+  row.append(input);
+  if (field.secret && field.set) {
+    const clear = node('button', 'Remove', 'ghost');
+    clear.type = 'button';
+    clear.onclick = () => { input.value = ''; settingsChanges[field.key] = null; settingsMessage(field.label + ' will be removed when you save.'); };
+    row.append(clear);
+  }
+  wrap.append(label, row, node('small', field.help));
+  return wrap;
+}
+function drawSettings() {
+  const groups = new Map();
+  for (const field of settings) {
+    if (!groups.has(field.group)) groups.set(field.group, []);
+    groups.get(field.group).push(field);
+  }
+  const body = byId('settings-fields');
+  body.replaceChildren();
+  for (const [group, fields] of groups) {
+    const set = document.createElement('fieldset');
+    set.append(node('legend', group), ...fields.map(settingField));
+    body.append(set);
+  }
+}
+async function openSettings() {
+  for (const key of Object.keys(settingsChanges)) delete settingsChanges[key];
+  settingsMessage('Loading…');
+  if (!settingsDialog.open) settingsDialog.showModal();
+  try {
+    const response = await fetch('/api/settings');
+    if (!response.ok) throw Error();
+    settings = await response.json();
+    drawSettings();
+    settingsMessage('API keys are never shown again after saving.');
+  } catch {
+    settingsMessage('Could not load settings.', 'error');
+  }
+}
+byId('open-settings').onclick = openSettings;
+byId('close-settings').onclick = () => settingsDialog.close();
+settingsDialog.addEventListener('click', event => { if (event.target === settingsDialog) settingsDialog.close(); });
+byId('settings-form').onsubmit = async event => {
+  event.preventDefault();
+  const changes = {};
+  for (const [key, value] of Object.entries(settingsChanges)) {
+    const field = settings.find(entry => entry.key === key);
+    if (field.secret && value === '') continue;
+    changes[key] = value === '' ? null : value;
+  }
+  if (!Object.keys(changes).length) { settingsMessage('Nothing to save.'); return; }
+  const save = byId('save-settings');
+  save.disabled = true;
+  try {
+    const response = await fetch('/api/settings', {
+      method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(changes)
+    });
+    const body = await response.json();
+    if (!response.ok) throw Error(typeof body.detail === 'string' ? body.detail : 'Could not save settings.');
+    settings = body;
+    for (const key of Object.keys(settingsChanges)) delete settingsChanges[key];
+    for (const key of Object.keys(details)) delete details[key];
+    drawSettings();
+    settingsMessage('Saved. New runs use these settings.', 'saved');
+    if (selected) { loadDetails(selected); }
+  } catch (error) {
+    settingsMessage(error.message, 'error');
+  }
+  save.disabled = false;
+};
 backdrop.onclick = closeSidebar;
-document.addEventListener('keydown', event => { if (event.key === 'Escape') closeSidebar(); });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && !settingsDialog.open) closeSidebar(); });
 (async () => {
   feedback.textContent = 'Loading catalog…';
   try {

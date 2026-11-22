@@ -1,22 +1,25 @@
-# Instruções para assistentes de IA
+# Instructions for AI assistants
 
-## Catálogo de agentes e ferramentas
+## Catalog of agents and tools
 
-Ao criar ou alterar qualquer item em `app/agents/` ou `app/tools/`, siga
-[docs/padroes-catalogo.md](docs/padroes-catalogo.md). Resumo obrigatório:
+When creating or changing any item in `app/agents/` or `app/tools/`, follow
+[docs/catalog-standards.md](docs/catalog-standards.md). Mandatory summary:
 
-1. Crie itens novos com o gerador, nunca copiando pastas à mão:
-   `uv run --locked python -m app.catalog_cli new <agent|tool> <id> --title "<Título>"`.
-2. Cada item tem `item.toml`, `handler.py` e `README.md`; agentes também têm
+1. **English everywhere**: manifests, field descriptions, prompts, READMEs, messages and UI text.
+2. Create new items with the generator, never by copying folders:
+   `uv run --locked python -m app.catalog_cli new <agent|tool> <id> --title "<Title>"`.
+3. Each item has `item.toml`, `handler.py` and `README.md`; agents also have
    `app/assets/agents/<id>.md`.
-3. `handler.py` expõe apenas `Input`, `Output` e `async def run(request: Input) -> Output`;
-   todo campo tem `Field(description=...)`.
-4. `item.toml` tem pelo menos um `[[examples]]`; ferramentas incluem `output` esperado.
-5. Ao mudar `Input`/`Output`, atualize exemplos, README, a seção `# OUTPUT` do prompt
-   (agentes) e suba `version` (SemVer).
-6. Antes de concluir, rode e deixe passando:
+4. `handler.py` exposes only `Input`, `Output` and `async def run(request: Input) -> Output`;
+   every field has `Field(description=...)`.
+5. `item.toml` has at least one `[[examples]]`; tools include the expected `output`.
+6. When `Input`/`Output` changes, update the examples, the README, the prompt's
+   `# OUTPUT` section (agents) and bump `version` (SemVer).
+7. Never hard-code API keys. Declare required settings in `requires`; new settings go in
+   `app/settings.py` and `env-example`.
+8. Before finishing, run and keep passing:
    - `uv run --locked python -m app.catalog_cli check`
    - `uv run --locked python -m unittest app.tests.test_catalog -v`
 
-Não altere `app/catalog*.py` ou `app/catalog.html` para acomodar um item
-específico: se o padrão não comporta o caso, proponha a mudança no padrão.
+Do not change `app/catalog*.py` or `app/catalog.html` to accommodate a single item:
+if the standard does not fit the case, propose a change to the standard.

@@ -729,44 +729,44 @@ When modifying a wrapper or the Markdown loader, review its development skill, e
 
 Distributed under the [MIT license](LICENSE).
 
-## Catálogo local de agentes e ferramentas
+## Local catalog of agents and tools
 
-Execute a partir da raiz do repositório. Todos os módulos usam o mesmo ambiente do uv.
+Run from the repository root. Every module uses the same uv environment.
 
 ```powershell
 uv sync --locked
 uv run --locked uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Abra http://127.0.0.1:8000 para o painel ou http://127.0.0.1:8000/docs para a API.
-O painel administrativo foi feito para uso local.
+Open http://127.0.0.1:8000 for the dashboard or http://127.0.0.1:8000/docs for the API.
+The dashboard is an admin tool meant for local use only: keep it bound to 127.0.0.1.
 
 ```powershell
 uv run --locked python -m app.catalog_cli list
-'{"text":"um dois"}' | uv run --locked python -m app.catalog_cli run word_count --input -
+'{"text":"one two"}' | uv run --locked python -m app.catalog_cli run word_count --input -
 uv run --locked python -m app.catalog_cli disable word_count
 uv run --locked python -m app.catalog_cli enable word_count
 ```
 
-- **API**. GET /api/catalog lista os itens. PATCH /api/catalog/{id} recebe {"active": false}. POST /api/catalog/{id}/run recebe o objeto de entrada do item.
-- **MCP**. Configure o cliente para iniciar `uv run --locked python -m app.catalog_mcp` via stdio, com a raiz do repositório como diretório de trabalho. O cliente pode precisar atualizar a lista após uma mudança de status.
-- **Estado**. Os itens começam ativos. O estado é compartilhado via .catalog.sqlite3 na raiz. Use CATALOG_DB para apontar os processos para outro arquivo SQLite.
-- **Exemplos**. word_count funciona offline. summarizer recebe {"text": "..."} e exige OPENAI_API_KEY, com modelo opcional em OPENAI_MODEL_NAME.
+- **API**. `GET /api/catalog` lists the items and `GET /api/catalog/{id}` returns the input and output fields documented in the handler. `PATCH /api/catalog/{id}` accepts `{"active": false}`. `POST /api/catalog/{id}/run` accepts the item's input object.
+- **Settings**. The gear icon in the dashboard edits the API keys and model names in `.env` (`GET`/`PUT /api/settings`). Keys are never returned, only a masked hint. Use `CATALOG_ENV_FILE` to point to another file.
+- **MCP**. Configure the client to start `uv run --locked python -m app.catalog_mcp` over stdio, with the repository root as the working directory. The client may need to refresh its tool list after a status change.
+- **State**. Items start enabled. State is shared through `.catalog.sqlite3` in the root. Use `CATALOG_DB` to point the processes to another SQLite file.
+- **Examples**. `word_count` works offline. `summarizer` takes `{"text": "..."}` and needs `OPENAI_API_KEY`, with an optional model in `OPENAI_MODEL_NAME`.
 
-Para cadastrar outro item, siga [docs/padroes-catalogo.md](docs/padroes-catalogo.md)
-e use o gerador, que cria manifesto, contrato, README e (para agentes) o prompt:
+To add another item, follow [docs/catalog-standards.md](docs/catalog-standards.md)
+and use the generator, which creates the manifest, contract, README and (for agents) the prompt:
 
 ```powershell
-uv run --locked python -m app.catalog_cli new tool extrator_datas --title "Extrator de datas"
+uv run --locked python -m app.catalog_cli new tool date_extractor --title "Date extractor"
 uv run --locked python -m app.catalog_cli check
 uv run --locked python -m app.catalog_cli run word_count --example 1
 ```
 
-GET /api/catalog/{id} devolve os campos de entrada e saída documentados no handler.
-Assistentes de IA recebem as mesmas regras por `AGENTS.md`/`CLAUDE.md` e pela skill
-`catalogo-criar-item`.
+AI assistants get the same rules from `AGENTS.md`/`CLAUDE.md` and the
+`catalog-create-item` skill.
 
-O servidor MCP aceita três transportes, selecionados por argumento ou pela variável `MCP_TRANSPORT`:
+The MCP server supports three transports, selected by argument or by the `MCP_TRANSPORT` variable:
 
 ```powershell
 uv run --locked python -m app.catalog_mcp --transport stdio
@@ -774,4 +774,4 @@ uv run --locked python -m app.catalog_mcp --transport streamable-http --host 127
 uv run --locked python -m app.catalog_mcp --transport sse --host 127.0.0.1 --port 8001
 ```
 
-HTTP Streamable fica em `http://127.0.0.1:8001/mcp`. SSE usa `http://127.0.0.1:8001/sse`. O padrão é stdio. Configure Codex ou Claude Code com stdio para subprocesso local, ou com a URL MCP HTTP quando o cliente e o servidor puderem se conectar pela rede.
+Streamable HTTP is served at `http://127.0.0.1:8001/mcp` and SSE at `http://127.0.0.1:8001/sse`. The default is stdio. Configure Codex or Claude Code with stdio for a local subprocess, or with the HTTP MCP URL when the client and server can reach each other over the network.

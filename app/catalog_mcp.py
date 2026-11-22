@@ -30,12 +30,12 @@ async def call_tool(ctx, params) -> types.CallToolResult:
     item = discover().get(params.name)
     try:
         if item is None:
-            raise Unavailable("Item desconhecido.")
+            raise Unavailable("Unknown item.")
         result = await execute(item, "mcp", params.arguments or {})
     except (Unavailable, ValidationError) as exc:
-        message = str(exc) if isinstance(exc, Unavailable) else "Entrada inválida."
+        message = str(exc) if isinstance(exc, Unavailable) else "Invalid input."
     except Exception:
-        message = "Falha ao executar o item."
+        message = "Item execution failed."
     else:
         data = result.model_dump(mode="json")
         return types.CallToolResult(
@@ -51,12 +51,12 @@ server = Server("MCP Library", on_list_tools=list_tools, on_call_tool=call_tool)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Servidor MCP do catálogo.")
+    parser = argparse.ArgumentParser(description="Catalog MCP server.")
     parser.add_argument(
         "--transport",
         choices=("stdio", "streamable-http", "sse"),
         default=os.getenv("MCP_TRANSPORT", "stdio"),
-        help="Transporte MCP. Também pode ser definido em MCP_TRANSPORT.",
+        help="MCP transport. Can also be set with MCP_TRANSPORT.",
     )
     parser.add_argument("--host", default=os.getenv("MCP_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.getenv("MCP_PORT", "8001")))

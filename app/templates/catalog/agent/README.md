@@ -1,31 +1,31 @@
 # __TITLE__
 
-> Agente `__ID__`. Resuma aqui, em uma frase, o que ele faz.
+> Agent `__ID__`. Summarize here, in one sentence, what it does.
 
-## Quando usar
+## When to use
 
-- Situação em que o agente resolve o problema.
-- Situação em que **não** deve ser usado (e o que usar no lugar).
+- A situation the agent solves.
+- A situation where it should **not** be used (and what to use instead).
 
-## Como funciona
+## How it works
 
-1. `handler.py` valida a entrada (`Input`).
-2. `GPTAgent` carrega o prompt de `app/assets/agents/__ID__.md`.
-3. O modelo responde no formato `Output`, validado antes de ser devolvido.
+1. `handler.py` validates the input (`Input`).
+2. `GPTAgent` loads the prompt from `app/assets/agents/__ID__.md`.
+3. The model answers in the `Output` format, which is validated before being returned.
 
-Explique aqui as decisões do prompt que não são óbvias.
+Explain the prompt decisions that are not obvious.
 
-## Entrada e saída
+## Input and output
 
-Os campos estão documentados em `handler.py` e aparecem no painel do catálogo.
+The fields are documented in `handler.py` and shown in the catalog dashboard.
 
-## Exemplo
+## Example
 
 ```powershell
-'{"text":"Texto de exemplo."}' | uv run --locked python -m app.catalog_cli run __ID__ --input -
+uv run --locked python -m app.catalog_cli run __ID__ --example 1
 ```
 
-## Requisitos e limitações
+## Requirements and limitations
 
-- Requer `OPENAI_API_KEY` (modelo opcional em `OPENAI_MODEL_NAME`).
-- Respostas de LLM variam entre execuções; não use para cálculos exatos.
+- Requires `OPENAI_API_KEY` (set it in the dashboard's **Settings**).
+- LLM answers vary between runs; do not use it for exact calculations.

@@ -1,29 +1,29 @@
 # __TITLE__
 
-> Ferramenta `__ID__`. Resuma aqui, em uma frase, o que ela faz.
+> Tool `__ID__`. Summarize here, in one sentence, what it does.
 
-## Quando usar
+## When to use
 
-- Situação em que a ferramenta resolve o problema.
-- Situação em que **não** deve ser usada (e o que usar no lugar).
+- A situation the tool solves.
+- A situation where it should **not** be used (and what to use instead).
 
-## Como funciona
+## How it works
 
-Explique o algoritmo em poucos passos, incluindo decisões não óbvias
-(por exemplo, como espaços ou pontuação são tratados).
+Explain the algorithm in a few steps, including non-obvious decisions
+(for example, how whitespace or punctuation is handled).
 
-## Entrada e saída
+## Input and output
 
-Os campos estão documentados em `handler.py` (`Input` e `Output`) e aparecem
-no painel do catálogo. Registre aqui apenas regras que o schema não expressa.
+The fields are documented in `handler.py` (`Input` and `Output`) and shown in
+the catalog dashboard. Only record rules here that the schema cannot express.
 
-## Exemplo
+## Example
 
 ```powershell
-'{"text":"um dois três"}' | uv run --locked python -m app.catalog_cli run __ID__ --input -
+uv run --locked python -m app.catalog_cli run __ID__ --example 1
 ```
 
-## Requisitos e limitações
+## Requirements and limitations
 
-- Dependências externas: nenhuma.
-- Limitações conhecidas.
+- External dependencies: none.
+- Known limitations.

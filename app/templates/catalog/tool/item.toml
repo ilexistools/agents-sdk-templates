@@ -1,16 +1,16 @@
-# Manifesto do item. Padrão completo: docs/padroes-catalogo.md
+# Item manifest. Full standard: docs/catalog-standards.md
 id = "__ID__"
 type = "tool"
-title = "__TITLE__"                      # até 40 caracteres, substantivo curto
-description = "Descreva em uma frase o que a ferramenta faz."  # até 120 caracteres, começa com verbo
-icon = "🧩"                             # um emoji
-category = "Geral"                       # agrupa os itens na interface
-version = "0.1.0"                        # SemVer; suba a versão ao mudar Input/Output
-tags = []                                # até 6 palavras-chave em minúsculas
-requires = []                            # variáveis de ambiente obrigatórias, ex.: ["OPENAI_API_KEY"]
+title = "__TITLE__"                      # up to 40 characters, short noun phrase
+description = "Describe in one sentence what the tool does."  # up to 120 characters, starts with a verb
+icon = "🧩"                             # one emoji
+category = "General"                     # groups items in the dashboard
+version = "0.1.0"                        # SemVer; bump it when Input/Output changes
+tags = []                                # up to 6 lowercase keywords
+requires = []                            # required settings, e.g. ["OPENAI_API_KEY"]
 channels = ["api", "cli", "mcp"]
 
 [[examples]]
-title = "Exemplo básico"
-input = { text = "um dois três" }
-output = { result = "um dois três" }     # opcional; validado pelos testes quando presente
+title = "Basic example"
+input = { text = "one two three" }
+output = { result = "one two three" }    # optional; checked by the tests when present

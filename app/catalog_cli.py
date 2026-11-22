@@ -20,18 +20,18 @@ TEMPLATES = ROOT / "templates" / "catalog"
 
 
 def scaffold(kind: str, item_id: str, title: str, root: Path = ROOT, prompts: Path = AGENT_PROMPTS) -> list[Path]:
-    """Cria um item novo a partir de app/templates/catalog/<kind>/."""
+    """Create a new item from app/templates/catalog/<kind>/."""
     if not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", item_id):
-        raise ValueError("O id deve usar snake_case: letras minúsculas, números e _.")
+        raise ValueError("The id must be snake_case: lowercase letters, digits and _.")
     if not title or len(title) > 40 or any(char in title for char in '"\\\n'):
-        raise ValueError("O título deve ter de 1 a 40 caracteres, sem aspas ou barras.")
+        raise ValueError("The title must have 1 to 40 characters, without quotes or backslashes.")
     folder = root / f"{kind}s" / item_id
     targets = {folder / name: TEMPLATES / kind / name for name in ("item.toml", "handler.py", "README.md")}
     if kind == "agent":
         targets[prompts / f"{item_id}.md"] = TEMPLATES / kind / "prompt.md"
     existing = [str(path) for path in targets if path.exists()]
     if existing:
-        raise ValueError("Já existe: " + ", ".join(existing))
+        raise ValueError("Already exists: " + ", ".join(existing))
     for target, template in targets.items():
         target.parent.mkdir(parents=True, exist_ok=True)
         text = template.read_text(encoding="utf-8").replace("__ID__", item_id).replace("__TITLE__", title)
@@ -40,20 +40,20 @@ def scaffold(kind: str, item_id: str, title: str, root: Path = ROOT, prompts: Pa
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Catálogo de agentes e ferramentas")
+    parser = argparse.ArgumentParser(description="Catalog of agents and tools")
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("list", help="Lista os itens e seu estado")
-    commands.add_parser("check", help="Valida todos os itens contra o padrão do catálogo")
-    new = commands.add_parser("new", help="Cria um item a partir do modelo padrão")
+    commands.add_parser("list", help="List items and their state")
+    commands.add_parser("check", help="Validate every item against the catalog standard")
+    new = commands.add_parser("new", help="Create an item from the standard template")
     new.add_argument("type", choices=("agent", "tool"))
-    new.add_argument("id", help="Identificador em snake_case, igual ao nome da pasta")
-    new.add_argument("--title", required=True, help="Nome exibido na interface (até 40 caracteres)")
+    new.add_argument("id", help="snake_case identifier, same as the folder name")
+    new.add_argument("--title", required=True, help="Name shown in the dashboard (up to 40 characters)")
     for name in ("run", "enable", "disable"):
         command = commands.add_parser(name)
         command.add_argument("id")
         if name == "run":
-            command.add_argument("--input", help="Objeto JSON ou - para stdin")
-            command.add_argument("--example", type=int, help="Executa o exemplo N (a partir de 1) do item.toml")
+            command.add_argument("--input", help="JSON object, or - to read stdin")
+            command.add_argument("--example", type=int, help="Run example N (starting at 1) from item.toml")
     args = parser.parse_args()
 
     if args.command == "new":
@@ -63,7 +63,7 @@ def main():
             parser.error(str(exc))
         for path in created:
             print(path.relative_to(ROOT.parent))
-        print("Preencha os arquivos e rode: uv run --locked python -m app.catalog_cli check")
+        print("Fill in the files, then run: uv run --locked python -m app.catalog_cli check")
         return
 
     items = discover()
@@ -90,24 +90,24 @@ def main():
     else:
         item = items.get(args.id)
         if item is None:
-            parser.error("Item desconhecido.")
+            parser.error("Unknown item.")
         if args.command == "run":
             if (args.input is None) == (args.example is None):
-                parser.error("Informe --input ou --example.")
+                parser.error("Provide --input or --example.")
             try:
                 if args.example is not None:
                     if not 1 <= args.example <= len(item.examples):
-                        parser.error(f"O item tem {len(item.examples)} exemplo(s).")
+                        parser.error(f"The item has {len(item.examples)} example(s).")
                     payload = item.examples[args.example - 1].input
                 else:
                     payload = json.loads(sys.stdin.read() if args.input == "-" else args.input)
                 if not isinstance(payload, dict):
-                    parser.error("A entrada deve ser um objeto JSON.")
+                    parser.error("The input must be a JSON object.")
                 result = asyncio.run(execute(item, "cli", payload)).model_dump(mode="json")
             except ValueError as exc:
                 parser.error(str(exc))
             except Exception as exc:
-                parser.exit(1, f"Falha de execução ({type(exc).__name__}).\n")
+                parser.exit(1, f"Execution failed ({type(exc).__name__}).\n")
         else:
             active = args.command == "enable"
             set_active(item.id, active)

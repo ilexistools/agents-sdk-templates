@@ -1,7 +1,7 @@
-"""Resumidor (agente).
+"""Summarizer (agent).
 
-O comportamento do modelo está em ``app/assets/agents/summarizer.md``.
-Este handler só valida a entrada, chama o agente e devolve a saída estruturada.
+The model behavior lives in ``app/assets/agents/summarizer.md``.
+This handler only validates the input, calls the agent and returns the structured output.
 """
 
 from pydantic import BaseModel, Field
@@ -10,11 +10,11 @@ from app.orchestration.gpt_agent import GPTAgent
 
 
 class Input(BaseModel):
-    text: str = Field(min_length=1, description="Texto a resumir, em qualquer idioma.")
+    text: str = Field(min_length=1, description="Text to summarize, in any language.")
 
 
 class Output(BaseModel):
-    summary: str = Field(description="Resumo fiel e conciso, no mesmo idioma do texto de entrada.")
+    summary: str = Field(description="Faithful, concise summary in the same language as the input text.")
 
 
 async def run(request: Input) -> Output:

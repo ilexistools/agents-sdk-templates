@@ -1,16 +1,16 @@
-# Manifesto do item. Padrão completo: docs/padroes-catalogo.md
+# Item manifest. Full standard: docs/catalog-standards.md
 id = "__ID__"
 type = "agent"
-title = "__TITLE__"                      # até 40 caracteres, substantivo curto
-description = "Descreva em uma frase o que o agente faz."  # até 120 caracteres, começa com verbo
-icon = "🤖"                             # um emoji
-category = "Geral"                       # agrupa os itens na interface
-version = "0.1.0"                        # SemVer; suba a versão ao mudar Input/Output
-tags = ["llm"]                           # até 6 palavras-chave em minúsculas
-requires = ["OPENAI_API_KEY"]            # variáveis de ambiente obrigatórias
+title = "__TITLE__"                      # up to 40 characters, short noun phrase
+description = "Describe in one sentence what the agent does."  # up to 120 characters, starts with a verb
+icon = "🤖"                             # one emoji
+category = "General"                     # groups items in the dashboard
+version = "0.1.0"                        # SemVer; bump it when Input/Output changes
+tags = ["llm"]                           # up to 6 lowercase keywords
+requires = ["OPENAI_API_KEY"]            # required settings (configured in Settings)
 channels = ["api", "cli", "mcp"]
 
 [[examples]]
-title = "Exemplo básico"
-input = { text = "Texto de exemplo." }
-# Saídas de LLM variam; omita output ou use apenas como ilustração.
+title = "Basic example"
+input = { text = "Sample text." }
+# LLM outputs vary; omit output or use it only as an illustration.

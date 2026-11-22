@@ -1,9 +1,9 @@
-"""__TITLE__ (agente).
+"""__TITLE__ (agent).
 
-Contrato do catálogo: Input, Output e async run. O comportamento do modelo
-fica em app/assets/agents/__ID__.md; este arquivo só adapta a entrada,
-chama o agente e devolve a saída estruturada. Documente cada campo com
-description: o texto aparece na interface, na API e no schema MCP.
+Catalog contract: Input, Output and async run. The model behavior lives in
+app/assets/agents/__ID__.md; this file only adapts the input, calls the agent
+and returns the structured output. Document every field with description:
+the text is shown in the dashboard, the API docs and the MCP schema.
 """
 
 from pydantic import BaseModel, Field
@@ -12,11 +12,11 @@ from app.orchestration.gpt_agent import GPTAgent
 
 
 class Input(BaseModel):
-    text: str = Field(min_length=1, description="Texto que o agente deve processar.")
+    text: str = Field(min_length=1, description="Text the agent should process.")
 
 
 class Output(BaseModel):
-    result: str = Field(description="Resposta produzida pelo agente.")
+    result: str = Field(description="Answer produced by the agent.")
 
 
 async def run(request: Input) -> Output:

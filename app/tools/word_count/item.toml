@@ -1,20 +1,20 @@
 id = "word_count"
 type = "tool"
-title = "Contador de palavras"
-description = "Conta palavras e caracteres sem espaços."
+title = "Word counter"
+description = "Counts words and non-whitespace characters in a text."
 icon = "🔢"
-category = "Texto"
-version = "1.0.0"
-tags = ["texto", "offline"]
+category = "Text"
+version = "1.1.0"
+tags = ["text", "offline"]
 requires = []
 channels = ["api", "cli", "mcp"]
 
 [[examples]]
-title = "Frase curta"
-input = { text = "um dois três" }
-output = { word_count = 3, character_count = 10 }
+title = "Short sentence"
+input = { text = "one two three" }
+output = { word_count = 3, character_count = 11 }
 
 [[examples]]
-title = "Espaços extras e quebras de linha"
-input = { text = "  olá   mundo\nnovo  " }
-output = { word_count = 3, character_count = 12 }
+title = "Extra spaces and line breaks"
+input = { text = "  hello   world\nagain  " }
+output = { word_count = 3, character_count = 15 }

@@ -1,34 +1,34 @@
-# Contador de palavras
+# Word counter
 
-> Ferramenta `word_count`. Conta palavras e caracteres (sem espaços) de um texto.
-> Funciona offline e é o exemplo de referência para ferramentas determinísticas.
+> Tool `word_count`. Counts the words and non-whitespace characters in a text.
+> It runs offline and is the reference example for deterministic tools.
 
-## Quando usar
+## When to use
 
-- Medir o tamanho de um texto antes de enviá-lo a um modelo ou formulário.
-- **Não** use para contar tokens de LLM: tokens não correspondem a palavras.
+- Measuring the size of a text before sending it to a model or a form.
+- **Do not** use it to count LLM tokens: tokens do not map to words.
 
-## Como funciona
+## How it works
 
-1. `handler.py` valida a entrada (`Input.text`).
-2. `count_words` (em `app/mcp_tools/tools.py`) divide o texto com `str.split()`,
-   que trata qualquer sequência de espaços, tabulações ou quebras de linha como um separador.
-3. `word_count` é o número de partes; `character_count` é a soma do tamanho de cada parte,
-   portanto espaços não entram na conta. Pontuação colada à palavra conta como caractere.
+1. `handler.py` validates the input (`Input.text`).
+2. `count_words` (in `app/mcp_tools/tools.py`) splits the text with `str.split()`,
+   which treats any run of spaces, tabs or line breaks as one separator.
+3. `word_count` is the number of parts; `character_count` is the sum of their
+   lengths, so whitespace is not counted. Punctuation attached to a word counts as a character.
 
-A lógica fica numa função pura, fora do handler, para poder ser testada e
-reaproveitada por outros servidores (por exemplo, `app/mcp_tools/server.py`).
+The logic lives in a pure function outside the handler so it can be tested and
+reused by other servers (for example, `app/mcp_tools/server.py`).
 
-## Exemplo
+## Example
 
 ```powershell
 uv run --locked python -m app.catalog_cli run word_count --example 1
-'{"text":"um dois três"}' | uv run --locked python -m app.catalog_cli run word_count --input -
+'{"text":"one two three"}' | uv run --locked python -m app.catalog_cli run word_count --input -
 ```
 
-Saída: `{"word_count": 3, "character_count": 10}`.
+Output: `{"word_count": 3, "character_count": 11}`.
 
-## Requisitos e limitações
+## Requirements and limitations
 
-- Nenhuma dependência externa nem chave de API.
-- Não reconhece palavras unidas por hífen ou pontuação sem espaço como palavras separadas.
+- No external dependencies and no API key.
+- Words joined by hyphens or punctuation without spaces count as a single word.

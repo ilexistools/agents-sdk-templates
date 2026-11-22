@@ -1,48 +1,48 @@
-# Resumidor
+# Summarizer
 
-> Agente `summarizer`. Resume um texto no idioma original, preservando fatos,
-> conclusões e ressalvas. É o exemplo de referência para agentes baseados em LLM.
+> Agent `summarizer`. Summarizes a text in its original language, keeping facts,
+> conclusions and caveats. It is the reference example for LLM-based agents.
 
-## Quando usar
+## When to use
 
-- Condensar atas, e-mails, artigos ou relatórios para leitura rápida.
-- **Não** use para traduzir (veja o agente `translator` em `app/assets/agents/`)
-  nem quando cada número do texto precisa ser reproduzido exatamente.
+- Condensing meeting notes, emails, articles or reports for quick reading.
+- **Do not** use it to translate (see the `translator` agent in `app/assets/agents/`)
+  or when every number in the text must be reproduced exactly.
 
-## Como funciona
+## How it works
 
-Um agente do catálogo tem duas partes:
+A catalog agent has two parts:
 
-| Parte | Arquivo | Responsabilidade |
+| Part | File | Responsibility |
 |---|---|---|
-| Contrato | `app/agents/summarizer/handler.py` | Define `Input` e `Output` e chama o agente |
-| Comportamento | `app/assets/agents/summarizer.md` | Papel, objetivo e instruções do modelo |
+| Contract | `app/agents/summarizer/handler.py` | Defines `Input` and `Output` and calls the agent |
+| Behavior | `app/assets/agents/summarizer.md` | Role, goal and model instructions |
 
-Fluxo de uma execução:
+Flow of a run:
 
-1. O canal (API, CLI ou MCP) recebe `{"text": "..."}` e o catálogo verifica se o item
-   está ativo nesse canal.
-2. `handler.py` valida a entrada com `Input` (texto não pode ser vazio).
-3. `GPTAgent(agent_id="summarizer")` lê `summarizer.md`: o frontmatter define `role`,
-   `goal` e `max_tokens`, e todas as seções (`# INPUT`, `# OUTPUT`, `# INSTRUCTIONS`,
-   `# KNOWLEDGE`) são concatenadas às instruções enviadas ao modelo.
-4. O modelo responde com `output_type=Output`, ou seja, um JSON com `summary`.
-5. O catálogo valida a resposta com `Output` antes de devolvê-la ao canal.
+1. A channel (API, CLI or MCP) receives `{"text": "..."}` and the catalog checks
+   that the item is enabled on that channel.
+2. `handler.py` validates the input with `Input` (the text cannot be empty).
+3. `GPTAgent(agent_id="summarizer")` reads `summarizer.md`: the front matter sets `role`,
+   `goal` and `max_tokens`, and every section (`# INPUT`, `# OUTPUT`, `# INSTRUCTIONS`,
+   `# KNOWLEDGE`) is appended to the instructions sent to the model.
+4. The model answers with `output_type=Output`, that is, JSON with `summary`.
+5. The catalog validates the answer with `Output` before returning it to the channel.
 
-Para mudar **o que** o agente faz, edite o `.md`. Para mudar **o formato** da
-entrada ou saída, edite `handler.py`, a seção `# OUTPUT` do `.md`, os exemplos do
-`item.toml` e suba `version`.
+To change **what** the agent does, edit the `.md` file. To change the **shape** of
+the input or output, edit `handler.py`, the `# OUTPUT` section of the `.md` file,
+the examples in `item.toml`, and bump `version`.
 
-## Exemplo
+## Example
 
 ```powershell
 uv run --locked python -m app.catalog_cli run summarizer --example 1
 ```
 
-Saída (varia entre execuções): `{"summary": "Orçamento de 2027 aprovado com +8% em pesquisa; corte em viagens adiado para março."}`
+Output (varies between runs): `{"summary": "The 2027 budget was approved with 8% more for research; the travel cut was postponed to March."}`
 
-## Requisitos e limitações
+## Requirements and limitations
 
-- Requer `OPENAI_API_KEY`; o modelo pode ser trocado com `OPENAI_MODEL_NAME`.
-- `max_tokens: 768` limita o tamanho do resumo.
-- Textos muito longos podem exceder a janela de contexto do modelo; divida-os antes.
+- Requires `OPENAI_API_KEY` (set it in the dashboard's **Settings**); the model can be changed there too (`OPENAI_MODEL_NAME`).
+- `max_tokens: 768` limits the summary length.
+- Very long texts may exceed the model's context window; split them first.

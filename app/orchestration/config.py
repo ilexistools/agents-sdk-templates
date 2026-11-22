@@ -9,7 +9,7 @@ DEFAULT_DECISION_MODEL = "gpt-6-luna"
 
 
 def load_environment() -> None:
-    load_dotenv(find_dotenv())
+    load_dotenv(os.environ.get("CATALOG_ENV_FILE") or find_dotenv())
 
 
 def default_model() -> str:

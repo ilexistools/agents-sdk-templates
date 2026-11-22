@@ -1,6 +1,6 @@
-"""Contador de palavras (ferramenta).
+"""Word counter (tool).
 
-Adapta a função pura ``count_words`` ao contrato do catálogo.
+Adapts the pure function ``count_words`` to the catalog contract.
 """
 
 from pydantic import BaseModel, Field
@@ -9,12 +9,12 @@ from app.mcp_tools.tools import count_words
 
 
 class Input(BaseModel):
-    text: str = Field(description="Texto a analisar. Palavras são separadas por qualquer espaço em branco.")
+    text: str = Field(description="Text to analyze. Words are separated by any whitespace.")
 
 
 class Output(BaseModel):
-    word_count: int = Field(description="Quantidade de palavras.")
-    character_count: int = Field(description="Quantidade de caracteres, sem contar espaços e quebras de linha.")
+    word_count: int = Field(description="Number of words.")
+    character_count: int = Field(description="Number of characters, excluding spaces and line breaks.")
 
 
 async def run(request: Input) -> Output:

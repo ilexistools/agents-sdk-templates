@@ -1,8 +1,8 @@
-"""Catálogo de agentes e ferramentas.
+"""Catalog of agents and tools.
 
-Cada item vive em ``app/agents/<id>/`` ou ``app/tools/<id>/`` e segue o padrão
-descrito em ``docs/padroes-catalogo.md``: ``item.toml`` (manifesto),
-``handler.py`` (contrato ``Input``/``Output`` + ``async run``) e ``README.md``.
+Each item lives in ``app/agents/<id>/`` or ``app/tools/<id>/`` and follows the
+standard in ``docs/catalog-standards.md``: ``item.toml`` (manifest),
+``handler.py`` (``Input``/``Output`` contract + ``async run``) and ``README.md``.
 """
 
 import importlib
@@ -48,10 +48,9 @@ class Item(BaseModel):
         return importlib.import_module(f"app.{self.type}s.{self.id}.handler")
 
     def missing_requirements(self) -> list[str]:
-        from app.orchestration.config import load_environment
+        from app.settings import configured_value
 
-        load_environment()
-        return [name for name in self.requires if not os.environ.get(name)]
+        return [name for name in self.requires if not configured_value(name)]
 
 
 def load_item(path: Path) -> Item:
@@ -64,7 +63,7 @@ def discover() -> dict[str, Item]:
         for path in sorted((ROOT / f"{kind}s").glob("*/item.toml")):
             item = load_item(path)
             if item.type != kind or item.id != path.parent.name or item.id in items:
-                raise ValueError(f"Identidade inválida ou duplicada: {path}")
+                raise ValueError(f"Invalid or duplicate identity: {path}")
             items[item.id] = item
     return items
 
@@ -84,7 +83,7 @@ def _fields(model: type[BaseModel]) -> list[dict]:
 
 
 def describe(item: Item) -> dict:
-    """Documentação gerada a partir do contrato do handler (usada pela interface)."""
+    """Documentation generated from the handler contract (used by the dashboard)."""
     handler = item.implementation()
     return {
         "input": _fields(handler.Input),
@@ -94,26 +93,26 @@ def describe(item: Item) -> dict:
 
 
 def check(item: Item) -> list[str]:
-    """Verifica se o item segue o padrão. Retorna a lista de problemas encontrados."""
+    """Check that the item follows the standard. Returns the problems found."""
     problems = []
     if not (item.folder / "README.md").is_file():
-        problems.append("README.md ausente na pasta do item.")
+        problems.append("README.md is missing from the item folder.")
     if item.type == "agent" and not (AGENT_PROMPTS / f"{item.id}.md").is_file():
-        problems.append(f"Prompt ausente: app/assets/agents/{item.id}.md.")
+        problems.append(f"Missing prompt: app/assets/agents/{item.id}.md.")
     try:
         handler = item.implementation()
     except Exception as exc:
-        return problems + [f"handler.py não importa ({type(exc).__name__}: {exc})."]
+        return problems + [f"handler.py cannot be imported ({type(exc).__name__}: {exc})."]
     for name in ("Input", "Output"):
         model = getattr(handler, name, None)
         if not (inspect.isclass(model) and issubclass(model, BaseModel)):
-            problems.append(f"handler.{name} deve ser um modelo Pydantic.")
+            problems.append(f"handler.{name} must be a Pydantic model.")
             continue
         for field, info in model.model_fields.items():
             if not info.description:
-                problems.append(f"{name}.{field} sem description (use Field(description=...)).")
+                problems.append(f"{name}.{field} has no description (use Field(description=...)).")
     if not inspect.iscoroutinefunction(getattr(handler, "run", None)):
-        problems.append("handler.run deve ser uma função async run(request: Input) -> Output.")
+        problems.append("handler.run must be async run(request: Input) -> Output.")
     if problems:
         return problems
     for example in item.examples:
@@ -123,7 +122,7 @@ def check(item: Item) -> list[str]:
             try:
                 getattr(handler, name).model_validate(data)
             except ValidationError:
-                problems.append(f"Exemplo '{example.title}': {name.lower()} não segue {name}.")
+                problems.append(f"Example '{example.title}': {name.lower()} does not match {name}.")
     return problems
 
 
@@ -182,7 +181,7 @@ class Unavailable(ValueError):
 
 async def execute(item: Item, channel: Channel, payload: dict) -> BaseModel:
     if not is_available(item, channel):
-        raise Unavailable("Item indisponível neste canal.")
+        raise Unavailable("Item is not available on this channel.")
     handler = item.implementation()
     request = handler.Input.model_validate(payload)
     return handler.Output.model_validate(await handler.run(request))
