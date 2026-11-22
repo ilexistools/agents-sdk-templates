@@ -8,7 +8,7 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 from pydantic import ValidationError
 
-from app.catalog import Unavailable, discover, execute, is_available
+from app.catalog import ItemError, Unavailable, discover, execute, is_available
 
 
 async def list_tools(ctx, params) -> types.ListToolsResult:
@@ -32,8 +32,8 @@ async def call_tool(ctx, params) -> types.CallToolResult:
         if item is None:
             raise Unavailable("Unknown item.")
         result = await execute(item, "mcp", params.arguments or {})
-    except (Unavailable, ValidationError) as exc:
-        message = str(exc) if isinstance(exc, Unavailable) else "Invalid input."
+    except (Unavailable, ItemError, ValidationError) as exc:
+        message = "Invalid input." if isinstance(exc, ValidationError) else str(exc)
     except Exception:
         message = "Item execution failed."
     else:

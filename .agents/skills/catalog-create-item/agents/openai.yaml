@@ -1,3 +1,3 @@
 interface:
   display_name: "Create catalog item"
-  short_description: "Agents and tools following the dashboard, API, CLI and MCP standard"
+  short_description: "Agents and tools with contract, examples, docs and tests"

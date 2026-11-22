@@ -10,6 +10,17 @@
 - Add a `Dockerfile`, `.dockerignore` and `docker-compose.yml` (with an optional
   MCP-over-HTTP profile) and a "Run and deploy" guide in the README.
 - `GET /api/settings` now returns `{"readonly": ..., "fields": [...]}`.
+- Add knowledge for AI coding assistants: `docs/architecture.md`, a rewritten
+  `AGENTS.md` (project map, commands, rules, skill index), the
+  `catalog-create-item` skill with tool, agent and testing references, and the new
+  `catalog-review-item` and `catalog-extend-platform` skills.
+- Make every skill visible to Claude Code through generated `.claude/skills/`
+  pointers (`scripts/sync_skills.py`), checked by `app.tests.test_project_knowledge`.
+- Settings listed in an item's `requires` now appear in Settings automatically;
+  `requires` names must be `UPPER_SNAKE_CASE`, and `check` rejects provider keys there.
+- Add `ItemError` for expected item failures, shown by every channel; missing
+  settings are now checked in `execute`, so the CLI and MCP report them too.
+- `test_catalog` checks that every agent handler calls `create_agent` with its own id.
 
 ## 0.8.0 — 2026-11-22
 

@@ -21,7 +21,7 @@ The template keeps orchestration visible in ordinary Python: wrappers handle mod
 - **Sandbox experiments:** make task-specific skills available to an agent with a configured execution backend.
 - **HTTP integrations:** adapt the included FastAPI application and runnable endpoint examples.
 
-The repository includes executable examples, offline regression tests, five skills for coding agents and focused guides for the [catalog standards](docs/catalog-standards.md), [Decisions](docs/decisions.md) and [development skills](docs/development-skills.md).
+The repository includes executable examples, offline regression tests, seven skills for coding agents and focused guides for the [architecture](docs/architecture.md), [catalog standards](docs/catalog-standards.md), [Decisions](docs/decisions.md) and [development skills](docs/development-skills.md).
 
 ## Contents
 
@@ -195,7 +195,7 @@ uv run --locked python -m app.catalog_mcp --transport sse --host 127.0.0.1 --por
 
 Streamable HTTP is served at `http://127.0.0.1:8001/mcp` and SSE at `http://127.0.0.1:8001/sse`. Configure Codex or Claude Code with stdio for a local subprocess, or with the HTTP MCP URL when the client and server can reach each other over the network. Restart the MCP server after changing Settings so it picks up new values.
 
-AI coding assistants get the same rules from [AGENTS.md](AGENTS.md)/[CLAUDE.md](CLAUDE.md) and the [`catalog-create-item`](.agents/skills/catalog-create-item/SKILL.md) skill.
+AI coding assistants (Codex, Claude Code and others) get the same rules from [AGENTS.md](AGENTS.md)/[CLAUDE.md](CLAUDE.md), the [architecture guide](docs/architecture.md) and the `catalog-*` skills; see [Skills for coding agents](#skills-for-coding-agents).
 
 ## Providers and models
 
@@ -758,11 +758,19 @@ The examples are starting points for your own endpoints. Define your application
 
 ## Skills for coding agents
 
-The repository includes five development skills under `.agents/skills/`. They help a coding agent use the actual wrappers, generate compatible definitions and validate its implementation. Coding agents also read the project rules in [AGENTS.md](AGENTS.md) (Codex and others) and [CLAUDE.md](CLAUDE.md) (Claude Code).
+The repository includes seven development skills under `.agents/skills/`. They help a coding agent follow the project's conventions, use the actual wrappers and validate its work. Coding agents also read the project rules in [AGENTS.md](AGENTS.md) (Codex and others) and [CLAUDE.md](CLAUDE.md) (Claude Code, which imports AGENTS.md), and the [architecture guide](docs/architecture.md).
+
+| Harness | Finds skills in | Notes |
+|---|---|---|
+| Codex and agents that read `.agents/skills/` | `.agents/skills/<name>/` | The source of truth |
+| Claude Code | `.claude/skills/<name>/SKILL.md` | Generated pointers to `.agents/skills/`; refresh with `uv run --locked python scripts/sync_skills.py` |
+| Any other agent | Ask it to read `AGENTS.md` and the relevant `SKILL.md` | |
 
 | Skill | Main task |
 |---|---|
-| [`catalog-create-item`](.agents/skills/catalog-create-item/SKILL.md) | Create or change a catalog agent or tool following the [catalog standards](docs/catalog-standards.md) |
+| [`catalog-create-item`](.agents/skills/catalog-create-item/SKILL.md) | Create or change a catalog agent or tool: contract, manifest, prompt, README and offline tests |
+| [`catalog-review-item`](.agents/skills/catalog-review-item/SKILL.md) | Review an item or a change against the standard, including security |
+| [`catalog-extend-platform`](.agents/skills/catalog-extend-platform/SKILL.md) | Add providers, platform settings, manifest fields, endpoints or dashboard features safely |
 | [`agents-template-criar-agente`](.agents/skills/agents-template-criar-agente/SKILL.md) | Create or review Markdown definitions, output contracts and loading code |
 | [`agents-template-criar-aplicacao`](.agents/skills/agents-template-criar-aplicacao/SKILL.md) | Implement Python features and FastAPI endpoints, including Decisions integration |
 | [`agents-template-orquestrar-agentes`](.agents/skills/agents-template-orquestrar-agentes/SKILL.md) | Build sequential flows, Decisions-based routing, handoffs and specialist tools |
@@ -771,10 +779,12 @@ The repository includes five development skills under `.agents/skills/`. They he
 Example request:
 
 ```text
-Use $agents-template-orquestrar-agentes to classify requests with GPTDecision and route them to configured specialists.
+Use $catalog-create-item to add a tool that converts currencies using an exchange-rate API.
 ```
 
-The four `agents-template-*` skills are written in Portuguese; `catalog-create-item` is in English, like the catalog. All are versioned with the project. Discovery depends on your coding agent's support for repository skills; in a session that has not discovered them, reload the project or start a new chat. Another agent can also be asked to read the relevant `SKILL.md` directly.
+In Claude Code, describe the task ("add a tool that ...") or type `/catalog-create-item`.
+
+The four `agents-template-*` skills are written in Portuguese; the three `catalog-*` skills are in English, like the catalog. All are versioned with the project. Discovery depends on your coding agent's support for repository skills; in a session that has not discovered them, reload the project or start a new chat. Another agent can also be asked to read the relevant `SKILL.md` directly.
 
 | Location | Used by | Content |
 |---|---|---|
@@ -806,6 +816,7 @@ uv run --locked python -m unittest app.tests.test_skill_examples -v
 
 | Test module | Coverage |
 |---|---|
+| `test_project_knowledge` | Skills have valid front matter and Codex metadata, Claude Code mirrors are in sync, AGENTS.md indexes every skill, and links and documented commands resolve |
 | `test_deploy` | `python -m app` entry point, refusal to listen publicly without a token, token authentication (Bearer and Basic) and read-only Settings |
 | `test_catalog` | Every item follows the standard, tool examples produce their expected output, catalog API and MCP channel filtering, the `new` generator, Settings (keys never returned, validation), model references, `create_agent` backends, per-agent model choice and provider endpoints |
 | `test_gpt_decision` | Sync/async SDK requests over mock HTTP transports, typed answers, usage, validation and routing outcomes |
@@ -840,7 +851,8 @@ For local demonstrations, review the Markdown models before execution. Always ru
 
 ```text
 .
-|-- .agents/skills/               # Five skills for coding agents
+|-- .agents/skills/               # Seven skills for coding agents (source of truth)
+|-- .claude/skills/               # Generated Claude Code pointers to .agents/skills
 |-- app/
 |   |-- main.py                   # FastAPI application (mounts the catalog)
 |   |-- catalog.py                # Catalog discovery, validation, state and execution
@@ -874,12 +886,14 @@ For local demonstrations, review the Markdown models before execution. Always ru
 |   |   `-- util.py               # Markdown agent loaders
 |   `-- tests/                    # Offline tests and live demonstrations
 |-- docs/
+|   |-- architecture.md           # How the layers, state, providers and security fit
 |   |-- catalog-standards.md      # How to build catalog agents and tools
 |   |-- decisions.md              # Decisions API and routing guide
 |   `-- development-skills.md     # Coding-agent skills guide
 |-- .python-version               # Preferred development interpreter
 |-- AGENTS.md, CLAUDE.md          # Rules for AI coding assistants
 |-- Dockerfile, docker-compose.yml # Container image and local deployment
+|-- scripts/sync_skills.py        # Regenerates .claude/skills from .agents/skills
 |-- CHANGELOG.md
 |-- env-example
 |-- LICENSE

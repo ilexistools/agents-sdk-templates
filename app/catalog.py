@@ -12,7 +12,7 @@ import sqlite3
 import tomllib
 from contextlib import closing
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -36,7 +36,7 @@ class Item(BaseModel):
     category: str = Field(min_length=1, max_length=30)
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     tags: list[str] = Field(default_factory=list, max_length=6)
-    requires: list[str] = Field(default_factory=list)
+    requires: list[Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]{1,63}$")]] = Field(default_factory=list)
     channels: set[Channel] = Field(min_length=1)
     examples: list[Example] = Field(min_length=1)
 
@@ -137,6 +137,12 @@ def check(item: Item) -> list[str]:
     source = (item.folder / "handler.py").read_text(encoding="utf-8")
     if item.type == "agent" and "create_agent(" not in source:
         problems.append("Agent handlers must build the agent with create_agent() so any provider works.")
+    if item.type == "agent":
+        from app.orchestration.providers import PROVIDERS
+
+        provider_keys = {p.key_env for p in PROVIDERS.values() if p.key_env}
+        for key in sorted(provider_keys & set(item.requires)):
+            problems.append(f"Remove {key} from requires: the model provider's key is checked automatically.")
     if problems:
         return problems
     for example in item.examples:
@@ -227,9 +233,20 @@ class Unavailable(ValueError):
     pass
 
 
+class ItemError(Exception):
+    """Expected failure an item reports to the caller (e.g. "City not found.").
+
+    Channels show its message: API 422, MCP error result, CLI error. Keep the
+    message short and free of secrets; any other exception is reported generically.
+    """
+
+
 async def execute(item: Item, channel: Channel, payload: dict) -> BaseModel:
     if not is_available(item, channel):
         raise Unavailable("Item is not available on this channel.")
+    missing = item.missing_requirements()
+    if missing:
+        raise Unavailable(f"Missing setting: {', '.join(missing)}. Add it in Settings.")
     from app.orchestration.providers import model_override
 
     handler = item.implementation()

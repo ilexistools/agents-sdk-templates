@@ -8,6 +8,7 @@ from pathlib import Path
 from app.catalog import (
     AGENT_PROMPTS,
     ROOT,
+    ItemError,
     activation,
     check,
     configured_channels,
@@ -63,7 +64,7 @@ def main():
             parser.error(str(exc))
         for path in created:
             print(path.relative_to(ROOT.parent))
-        print("Fill in the files, then run: uv run --locked python -m app.catalog_cli check")
+        print("Next: fill in the files (see docs/catalog-standards.md), then run: uv run --locked python -m app catalog check")
         return
 
     items = discover()
@@ -104,7 +105,7 @@ def main():
                 if not isinstance(payload, dict):
                     parser.error("The input must be a JSON object.")
                 result = asyncio.run(execute(item, "cli", payload)).model_dump(mode="json")
-            except ValueError as exc:
+            except (ValueError, ItemError) as exc:
                 parser.error(str(exc))
             except Exception as exc:
                 parser.exit(1, f"Execution failed ({type(exc).__name__}).\n")

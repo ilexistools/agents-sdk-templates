@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, ValidationError
 
 from app.catalog import (
+    ItemError,
     Unavailable,
     activation,
     configured_channels,
@@ -107,13 +108,12 @@ def change_model(item_id: str, request: ModelRequest):
 @router.post("/api/catalog/{item_id}/run")
 async def run_item(item_id: str, payload: dict):
     item = get_item(item_id)
-    missing = item.missing_requirements()
-    if missing:
-        raise HTTPException(409, f"Missing setting: {', '.join(missing)}. Add it in Settings.")
     try:
         return await execute(item, "api", payload)
     except Unavailable as exc:
         raise HTTPException(409, str(exc)) from exc
+    except ItemError as exc:
+        raise HTTPException(422, str(exc)) from exc
     except ValidationError as exc:
         raise HTTPException(422, exc.errors(include_input=False, include_context=False)) from exc
     except Exception as exc:

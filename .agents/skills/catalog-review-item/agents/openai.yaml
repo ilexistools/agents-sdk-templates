@@ -1,0 +1,3 @@
+interface:
+  display_name: "Review catalog item"
+  short_description: "Audit an agent or tool against the catalog standard"

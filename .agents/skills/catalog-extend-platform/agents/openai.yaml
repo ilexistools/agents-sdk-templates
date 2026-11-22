@@ -1,0 +1,3 @@
+interface:
+  display_name: "Extend the platform"
+  short_description: "Providers, settings, manifest fields, API and dashboard changes"

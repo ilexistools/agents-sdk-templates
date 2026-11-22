@@ -48,6 +48,72 @@ class CatalogStandardTests(unittest.TestCase):
                     result = asyncio.run(handler.run(handler.Input.model_validate(example.input)))
                     self.assertEqual(result.model_dump(mode="json"), example.output)
 
+    def test_agent_handlers_use_create_agent_with_their_own_id(self):
+        from unittest.mock import AsyncMock
+
+        for item in discover().values():
+            if item.type != "agent":
+                continue
+            handler = item.implementation()
+            with self.subTest(item=item.id):
+                sentinel = handler.Output.model_construct()
+                fake = AsyncMock()
+                fake.run.return_value = sentinel
+                with patch.object(handler, "create_agent", return_value=fake) as factory:
+                    result = asyncio.run(handler.run(handler.Input.model_validate(item.examples[0].input)))
+                args, kwargs = factory.call_args
+                self.assertEqual(args[0] if args else kwargs.get("agent_id"), item.id)
+                self.assertIs(kwargs.get("output_type"), handler.Output)
+                fake.run.assert_awaited_once()
+                self.assertIs(result, sentinel)
+
+    def test_item_errors_reach_the_caller(self):
+        from app.catalog import ItemError
+        from app.main import app
+        from app.tools.word_count import handler
+
+        client = TestClient(app)
+
+        async def not_found(request):
+            raise ItemError("Nothing to count.")
+
+        async def crash(request):
+            raise KeyError("internal detail")
+
+        with patch.object(handler, "run", not_found):
+            response = client.post("/api/catalog/word_count/run", json={"text": "x"})
+        self.assertEqual((response.status_code, response.json()["detail"]), (422, "Nothing to count."))
+        with patch.object(handler, "run", crash):
+            response = client.post("/api/catalog/word_count/run", json={"text": "x"})
+        self.assertEqual(response.status_code, 502)
+        self.assertNotIn("internal detail", response.text)
+
+    def test_settings_required_by_items_appear_in_settings(self):
+        from app import catalog, catalog_api
+        from app.main import app
+
+        items = discover()
+        items["word_count"] = items["word_count"].model_copy(update={"requires": ["WEATHER_API_KEY", "WEATHER_BASE_URL"]})
+        client = TestClient(app)
+        with patch.object(catalog, "discover", return_value=items), \
+                patch.object(catalog_api, "discover", return_value=items):
+            fields = {f["key"]: f for f in client.get("/api/settings").json()["fields"]}
+            self.assertTrue(fields["WEATHER_API_KEY"]["secret"])
+            self.assertFalse(fields["WEATHER_BASE_URL"]["secret"])
+            self.assertEqual(fields["WEATHER_API_KEY"]["group"], "Agents and tools")
+            self.assertIn("Word counter", fields["WEATHER_API_KEY"]["help"])
+            self.assertEqual(items["word_count"].missing_requirements(), ["WEATHER_API_KEY", "WEATHER_BASE_URL"])
+            blocked = client.post("/api/catalog/word_count/run", json={"text": "x"})
+            self.assertEqual(blocked.status_code, 409)
+            self.assertEqual(client.put("/api/settings", json={"WEATHER_API_KEY": "abc123456789"}).status_code, 200)
+            self.assertEqual(items["word_count"].missing_requirements(), ["WEATHER_BASE_URL"])
+
+    def test_check_rejects_provider_keys_in_agent_requires(self):
+        item = discover()["summarizer"].model_copy(update={"requires": ["OPENAI_API_KEY"]})
+        self.assertTrue(any("OPENAI_API_KEY" in problem for problem in check(item)))
+        with self.assertRaises(Exception):
+            Item.model_validate({**discover()["word_count"].model_dump(), "requires": ["lowercase"]})
+
     def test_api_exposes_contract_and_runs_examples(self):
         from app.main import app
 

@@ -71,7 +71,7 @@ uv run --locked python -m app.catalog_cli new agent reviewer --title "Text revie
 | `category` | yes | groups items in the dashboard; reuse an existing one (`Text`, `Data`, `Web`, `Code`, `General`) before creating another | dashboard |
 | `version` | yes | SemVer `X.Y.Z`. Bump **major** when `Input`/`Output` breaks, **minor** for new optional fields or content changes, **patch** for fixes | dashboard |
 | `tags` | no | up to 6 lowercase words (`offline`, `llm`, `text`) | dashboard search |
-| `requires` | no | extra settings the item needs beyond the model provider's key, which is checked automatically | warning in dashboard, run is blocked while missing |
+| `requires` | no | environment-variable names (`UPPER_SNAKE_CASE`) of extra settings the item needs; never the model provider's key, which is checked automatically | listed in Settings ("Agents and tools"), warning in dashboard, runs blocked while missing |
 | `channels` | yes | subset of `["api", "cli", "mcp"]` where the item **may** be published | dashboard, filters |
 | `[[examples]]` | yes (≥ 1) | `title`, `input` and optionally `output` | dashboard (Run button), CLI `--example`, tests |
 
@@ -104,8 +104,9 @@ async def run(request: Input) -> Output:
   network. Agents: behavior in the `.md` prompt; the handler only calls `create_agent()` (never `GPTAgent` directly, so any provider works).
 - Do not read secrets directly or write files outside the item. Declare required
   settings in `requires`.
-- Input errors are handled by Pydantic. For other failures, raise exceptions; the
-  channels turn them into generic messages without leaking details.
+- Input errors are handled by Pydantic. For expected failures ("City not found"),
+  raise `ItemError` from `app.catalog`: every channel shows its message (API 422,
+  MCP error, CLI). Any other exception becomes a generic failure without details.
 
 ## 6. Agent prompt (`app/assets/agents/<id>.md`)
 

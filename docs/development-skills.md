@@ -1,12 +1,18 @@
 # Development skills
 
-The repository bundles five skills for coding agents that create applications
-with this template. They are versioned under `.agents/skills/`. The four
-`agents-template-*` skills are written in Portuguese; `catalog-create-item` is in
-English, like the catalog it documents. Coding agents also read the project rules
-in [AGENTS.md](../AGENTS.md) and [CLAUDE.md](../CLAUDE.md).
+The repository bundles seven skills for coding agents that create applications
+with this template. They are versioned under `.agents/skills/`. The three
+`catalog-*` skills are in English, like the catalog they document; the four
+`agents-template-*` skills are written in Portuguese. Coding agents also read the
+project rules in [AGENTS.md](../AGENTS.md) and [CLAUDE.md](../CLAUDE.md), and the
+[architecture guide](architecture.md).
 
 ## Discovery and setup
+
+| Harness | Location | How it stays current |
+|---|---|---|
+| Codex (and agents reading `.agents/skills/`) | `.agents/skills/<name>/` | Edit these files directly |
+| Claude Code | `.claude/skills/<name>/SKILL.md` | Generated pointers: run `uv run --locked python scripts/sync_skills.py` after editing a skill; `app.tests.test_project_knowledge` fails if they are stale |
 
 Open this repository as the coding agent's project. In Codex environments that
 support repository skills, `.agents/skills/` is the discovery location. If a
@@ -23,7 +29,9 @@ with their skill when copying it; run its examples from a checkout of this proje
 
 | Skill | Use it for | Example request |
 |---|---|---|
-| [catalog-create-item](../.agents/skills/catalog-create-item/SKILL.md) | Catalog agents and tools following [the catalog standards](catalog-standards.md) | `Use $catalog-create-item to add a tool that extracts dates from text.` |
+| [catalog-create-item](../.agents/skills/catalog-create-item/SKILL.md) | Catalog agents and tools following [the catalog standards](catalog-standards.md), with tool, agent and testing references | `Use $catalog-create-item to add a tool that extracts dates from text.` |
+| [catalog-review-item](../.agents/skills/catalog-review-item/SKILL.md) | Reviewing an item or a change: contract, prompt, docs, tests, security | `Use $catalog-review-item to review the summarizer agent.` |
+| [catalog-extend-platform](../.agents/skills/catalog-extend-platform/SKILL.md) | Providers, platform settings, manifest fields, endpoints, dashboard | `Use $catalog-extend-platform to add the Together AI provider.` |
 | [agents-template-criar-agente](../.agents/skills/agents-template-criar-agente/SKILL.md) | Markdown definitions, Pydantic output contracts and loading code | `Use $agents-template-criar-agente to create a report reviewer with structured output.` |
 | [agents-template-criar-aplicacao](../.agents/skills/agents-template-criar-aplicacao/SKILL.md) | Python features, provider configuration and FastAPI endpoints | `Use $agents-template-criar-aplicacao to create a classification endpoint using DeepSeek.` |
 | [agents-template-orquestrar-agentes](../.agents/skills/agents-template-orquestrar-agentes/SKILL.md) | Mandatory stages, handoffs and agents exposed as tools | `Use $agents-template-orquestrar-agentes to extract facts and then review them.` |
@@ -36,8 +44,13 @@ but an agent should load only the references relevant to that request.
 ## Contents and intended outputs
 
 - **Create a catalog item:** the workflow from classification (agent or tool)
-  to the `catalog_cli new` generator, contract, manifest, README and validation
-  with `catalog_cli check` and `app.tests.test_catalog`.
+  to the generator, contract, manifest, README and validation, plus references
+  for tools (pure logic, settings, external services, `ItemError`), agents
+  (`create_agent`, prompts, tools) and offline testing patterns.
+- **Review a catalog item:** a checklist beyond `check` (contract quality,
+  prompt rules, examples, security) and a findings format.
+- **Extend the platform:** recipes for providers, settings, manifest fields and
+  endpoints, the invariants to preserve and the files to update.
 - **Create an agent:** Markdown authoring guidance, a complete report-reviewer
   definition, a matching Pydantic example, and an offline validator using the
   application's real loader. It builds on the writing guidance in the existing

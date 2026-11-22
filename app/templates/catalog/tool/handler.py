@@ -3,6 +3,7 @@
 Catalog contract: Input, Output and async run. Keep the logic deterministic
 and testable without network access. Document every field with description:
 the text is shown in the dashboard, the API docs and the MCP schema.
+For expected failures, raise app.catalog.ItemError("short message").
 """
 
 from pydantic import BaseModel, Field

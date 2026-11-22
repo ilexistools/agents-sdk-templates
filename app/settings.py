@@ -68,11 +68,41 @@ def _hint(value: str) -> str:
     return "••••" + value[-4:] if len(value) > 8 else "••••"
 
 
+SECRET_HINTS = ("KEY", "TOKEN", "SECRET", "PASSWORD")
+RESERVED = {"CATALOG_TOKEN", "CATALOG_SETTINGS_READONLY", "CATALOG_DB", "CATALOG_ENV_FILE", "HOST", "PORT"}
+
+
+def item_fields() -> list[dict]:
+    """Settings declared by catalog items in `requires`, shown in Settings automatically."""
+    from app.catalog import discover
+
+    known = {field["key"] for field in FIELDS}
+    users: dict[str, list[str]] = {}
+    for item in discover().values():
+        for key in item.requires:
+            if key not in known and key not in RESERVED:
+                users.setdefault(key, []).append(item.title)
+    return [
+        {
+            "key": key,
+            "group": "Agents and tools",
+            "label": key.replace("_", " ").title(),
+            "secret": any(hint in key for hint in SECRET_HINTS),
+            "help": "Required by " + ", ".join(titles) + ".",
+        }
+        for key, titles in sorted(users.items())
+    ]
+
+
+def all_fields() -> list[dict]:
+    return FIELDS + item_fields()
+
+
 def read_settings() -> list[dict]:
     path = env_file()
     stored = dotenv_values(path) if path.exists() else {}
     result = []
-    for field in FIELDS:
+    for field in all_fields():
         key = field["key"]
         value = stored.get(key) or os.environ.get(key) or ""
         source = "env file" if stored.get(key) else "environment" if os.environ.get(key) else "default"
@@ -110,7 +140,7 @@ def providers_status() -> list[dict]:
 
 
 def validate(key: str, value: str) -> None:
-    field = KEYS.get(key)
+    field = KEYS.get(key) or next((f for f in item_fields() if f["key"] == key), None)
     if field is None:
         raise ValueError(f"Unknown setting: {key}.")
     if re.search(r"[\r\n\0]", value) or len(value) > 512:
