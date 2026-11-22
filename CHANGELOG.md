@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 2026-11-22
 
 - Add a catalog of agents and tools: items in `app/agents/<id>/` and
   `app/tools/<id>/` are discovered automatically and published through a local
