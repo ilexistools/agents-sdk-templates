@@ -135,9 +135,16 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
 .channel-option:has(input:disabled){opacity:.6;cursor:wait}
 .channel-option input{width:16px;height:16px;margin:0;accent-color:var(--accent)}
 .side-feedback{min-height:18px;color:var(--danger);font-size:12px;margin:8px 0 0}
-.group-title{display:flex;align-items:center;gap:8px;margin:18px 2px 4px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3)}
+.group-title{display:flex;align-items:baseline;gap:8px;margin:20px 2px 4px;font-size:15px;font-weight:650;letter-spacing:-.01em;color:var(--text)}
 .group-title:first-child{margin-top:0}
-.group-title span{font-weight:500;letter-spacing:0}
+.group-title span{font-size:12px;font-weight:500;color:var(--text-3)}
+.categories{display:flex;gap:6px;margin:0 0 16px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.categories[hidden]{display:none}
+.category-chip{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 8px 6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface);font-size:13px;color:var(--text-2);cursor:pointer;transition:background .15s,border-color .15s}
+.category-chip:hover{border-color:var(--border-strong)}
+.category-chip span{min-width:20px;padding:1px 6px;border-radius:20px;background:var(--surface-2);font-size:11px;font-weight:600;text-align:center;color:var(--text-3)}
+.category-chip[aria-pressed=true]{background:var(--text);border-color:var(--text);color:var(--surface);font-weight:600}
+.category-chip[aria-pressed=true] span{background:color-mix(in srgb,var(--surface) 20%,transparent);color:var(--surface)}
 .facts{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 20px}
 .fact{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2)}
 .warning{margin:0 0 20px;padding:10px 12px;border-radius:10px;font-size:13px;background:#fff7e6;color:#8a5a00;border:1px solid #f5d9a0}
@@ -190,6 +197,7 @@ h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;overflow-wrap:a
   <label><span class="sr-only">Channel</span><select id="channel"><option value="">All channels</option><option>API</option><option>CLI</option><option>MCP</option></select></label>
   <label><span class="sr-only">Status</span><select id="status"><option value="">Any status</option><option value="true">Active</option><option value="false">Inactive</option></select></label>
 </div>
+<div class="categories" id="categories" role="group" aria-label="Category" hidden></div>
 <p id="feedback" role="status"></p>
 <section id="cards" aria-label="Catalog items"></section>
 </main>
@@ -217,6 +225,7 @@ const backdrop = byId('backdrop');
 let items = [];
 let selected = null;
 let kind = '';
+let category = '';
 function node(tag, text, className) {
   const element = document.createElement(tag);
   element.textContent = text;
@@ -241,25 +250,49 @@ function renderStats() {
     stat(items.filter(item => item.type === 'tool').length, 'Tools'),
     stat(items.filter(item => item.active).length, 'Active'));
 }
+function renderCategories(filtered) {
+  const bar = byId('categories');
+  const all = [...new Set(items.map(item => item.category))].sort((a, b) => a.localeCompare(b));
+  if (all.length < 2) {
+    category = '';
+    bar.hidden = true;
+    return;
+  }
+  if (category && !all.includes(category)) category = '';
+  bar.hidden = false;
+  const chip = (value, label, count) => {
+    const button = node('button', label, 'category-chip');
+    button.type = 'button';
+    button.setAttribute('aria-pressed', String(category === value));
+    button.append(node('span', String(count)));
+    button.onclick = () => { category = value; render(); };
+    return button;
+  };
+  bar.replaceChildren(
+    chip('', 'All', filtered.length),
+    ...all.map(name => chip(name, name, filtered.filter(item => item.category === name).length)));
+}
 function render() {
   const query = byId('search').value.trim().toLocaleLowerCase();
   const channel = byId('channel').value.toLowerCase();
   const status = byId('status').value;
-  const visible = items.filter(item =>
+  const filtered = items.filter(item =>
     [item.title, item.description, item.id, item.category, ...(item.tags || [])].join(' ').toLocaleLowerCase().includes(query)
     && (!kind || item.type === kind)
     && (!channel || item.channels.includes(channel))
     && (!status || String(item.active) === status));
   renderStats();
+  renderCategories(filtered);
+  const visible = filtered.filter(item => !category || item.category === category);
   const groups = new Map();
   for (const item of [...visible].sort((a, b) => a.category.localeCompare(b.category) || a.title.localeCompare(b.title))) {
     if (!groups.has(item.category)) groups.set(item.category, []);
     groups.get(item.category).push(item);
   }
   cards.replaceChildren();
-  for (const [category, members] of groups) {
-    const title = node('h3', category, 'group-title');
-    title.append(node('span', '· ' + members.length));
+  for (const [name, members] of groups) {
+    const title = node('h3', name, 'group-title');
+    title.append(node('span', members.length + (members.length === 1 ? ' item' : ' items')));
     cards.append(title, ...members.map(card));
   }
   if (!visible.length) {
