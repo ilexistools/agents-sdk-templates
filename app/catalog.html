@@ -36,6 +36,10 @@ h1{font-size:24px;letter-spacing:-.025em;margin:0;font-weight:650}
 .docs-link{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--accent-text);font-size:13px;font-weight:600;text-decoration:none}
 .docs-link:hover{background:var(--accent-soft);border-color:var(--accent)}
 .api-help{display:block;margin-top:8px;font-size:12px;color:var(--text-3)}
+.mcp-connect{margin-top:14px;padding:12px;border:1px dashed var(--border-strong);border-radius:10px;background:var(--surface-2)}
+.mcp-connect .sub{margin:0 0 8px}
+.mcp-line{display:grid;gap:3px;margin-bottom:8px;font-size:12px;color:var(--text-3)}
+.mcp-line code{font:12px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 8px;overflow-wrap:anywhere;user-select:all}
 details.provider{border:1px solid var(--border);border-radius:12px;margin-bottom:8px;background:var(--surface)}
 details.provider[open]{padding-bottom:12px}
 details.provider summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;cursor:pointer;list-style:none;font-size:14px;font-weight:600}
@@ -698,6 +702,34 @@ function providerSection(id, fields) {
   section.append(actions, result);
   return section;
 }
+function settingValue(key) {
+  const input = byId('setting-' + key);
+  const field = settings.find(entry => entry.key === key) || {};
+  return (input && input.value.trim()) || field.default || '';
+}
+function drawMcpHint(target) {
+  const transport = settingValue('MCP_TRANSPORT');
+  const host = settingValue('MCP_HOST');
+  const port = settingValue('MCP_PORT');
+  const shown = ['0.0.0.0', '::'].includes(host) ? '127.0.0.1' : host;
+  const block = (label, code) => {
+    const wrap = node('div', '', 'mcp-line');
+    wrap.append(node('span', label), node('code', code));
+    return wrap;
+  };
+  target.replaceChildren(node('p', 'How clients connect', 'sub'));
+  if (transport === 'stdio') {
+    target.append(
+      block('Client starts:', 'uv run --locked python -m app mcp --transport stdio'),
+      node('small', 'Set the project folder as the working directory in the client configuration. No server to start.', 'api-help'));
+  } else {
+    const path = transport === 'sse' ? '/sse' : '/mcp';
+    target.append(
+      block('Start:', 'uv run --locked python -m app mcp'),
+      block('Clients connect to:', 'http://' + (shown.includes(':') && !shown.startsWith('[') ? '[' + shown + ']' : shown) + ':' + port + path),
+      node('small', 'If CATALOG_TOKEN is set, clients send Authorization: Bearer <token>. Save, then restart the MCP server to apply.', 'api-help'));
+  }
+}
 function drawSettings() {
   const groups = new Map();
   for (const field of settings) {
@@ -718,6 +750,14 @@ function drawSettings() {
     }
     const set = document.createElement('fieldset');
     set.append(node('legend', key), ...fields.map(settingField));
+    if (key === 'MCP server') {
+      const hint = node('div', '', 'mcp-connect');
+      set.append(hint);
+      const refresh = () => drawMcpHint(hint);
+      set.addEventListener('input', refresh);
+      set.addEventListener('change', refresh);
+      refresh();
+    }
     body.append(set);
   }
   const api = document.createElement('fieldset');

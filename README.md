@@ -185,7 +185,7 @@ uv run --locked python -m unittest app.tests.test_catalog -v
 
 **State.** Items start enabled. Enabled state, channels and per-agent model choices are stored in `.catalog.sqlite3` in the repository root (not versioned); point every process to another file with `CATALOG_DB`. Settings are stored in `.env`; use `CATALOG_ENV_FILE` to point to another file.
 
-**MCP server.** Configure the client to start `uv run --locked python -m app.catalog_mcp` over stdio, with the repository root as the working directory. The server lists only items that are enabled with the MCP channel on; the client may need to refresh its tool list after a change. Three transports are available, selected by argument or by `MCP_TRANSPORT`:
+**MCP server.** Choose the transport, host and port in the dashboard's **Settings → MCP server**; it shows the exact command or URL for clients. For a client that starts the server itself, configure `uv run --locked python -m app mcp --transport stdio` with the repository root as the working directory (always pass `--transport stdio` there, so a different default in Settings cannot break it). The server lists only items that are enabled with the MCP channel on; the client may need to refresh its tool list after a change. Three transports are available, selected by argument or by `MCP_TRANSPORT`, `MCP_HOST` and `MCP_PORT` (environment or `.env`):
 
 ```powershell
 uv run --locked python -m app.catalog_mcp --transport stdio
@@ -326,7 +326,7 @@ Every variable below except `MCP_*`, `CATALOG_*` and the optional `OPENAI_*` mod
 | `LOCAL_MODEL_NAME` | `local-model` | Model identifier accepted by that server |
 | `LOCAL_API_KEY` | `lm-studio` | Local placeholder or the remote provider's real key |
 | `LOCAL_DISABLE_TRACING` | `true` | Disable Agents SDK tracing when constructing `GPTLocalAgent` (all non-OpenAI providers) |
-| `MCP_TRANSPORT` | `streamable-http` | Default transport for the sample MCP server (the catalog MCP server defaults to `stdio`) |
+| `MCP_TRANSPORT`, `MCP_HOST`, `MCP_PORT` | `stdio`, `127.0.0.1`, `8888` | Catalog MCP server defaults when no flags are given (Settings → MCP server). The sample MCP server in `app/mcp_tools/` reads only `MCP_TRANSPORT` and defaults to `streamable-http` |
 | `CATALOG_DB` | `.catalog.sqlite3` | Catalog state: enabled items, channels and per-agent models |
 | `CATALOG_ENV_FILE` | `.env` | File read and written by Settings and loaded by the wrappers |
 
@@ -913,7 +913,8 @@ For local demonstrations, review the Markdown models before execution. Always ru
 | `Cannot combine structured output constraints with lazy grammar` | Use the current `GPTLocalAgent`, which avoids combining server `response_format` with tool grammar and validates the final text locally |
 | `run_sync()` fails in an active event loop | Use `await agent.run(...)` inside async functions |
 | MCP browser request returns `406` | Use a protocol-aware client with the appropriate headers and make a tool call |
-| MCP transport in `.env` is ignored | Pass `--transport`, export `MCP_TRANSPORT`, or load `.env` with `uv run --env-file .env` |
+| MCP transport in `.env` is ignored | The catalog MCP server (`python -m app mcp`) reads `.env`; the sample server in `app/mcp_tools/` does not: pass `--transport`, export `MCP_TRANSPORT`, or use `uv run --env-file .env` |
+| MCP client fails after changing the transport in Settings | Clients that start the server must pass `--transport stdio`; HTTP clients need the server started separately and its URL |
 | Address already in use | The dashboard defaults to 8787 and the catalog MCP server to 8888 (the sample MCP server uses 8000). Jupyter also defaults to 8888 and RStudio Server to 8787; pass `--port` or set `PORT` / `MCP_PORT` |
 | Sandbox rejects a `custom` tool | Check model capability and the resolved Markdown model, not just the sandbox fallback environment variable |
 | Unix-local sandbox error on Windows | Use the Docker backend or provide a supported client; verify optional dependencies and daemon availability |

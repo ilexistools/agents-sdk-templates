@@ -38,5 +38,9 @@ LOCAL_DISABLE_TRACING="true"
 # Block editing settings from the dashboard (keys come only from the environment).
 # CATALOG_SETTINGS_READONLY="true"
 
-# MCP server transport: streamable-http, sse, or stdio
-MCP_TRANSPORT="streamable-http"
+# Catalog MCP server (python -m app mcp), also editable in Settings → MCP server.
+# Transport used when --transport is not given: stdio (default), streamable-http or sse.
+# MCP clients that start the server themselves should always pass --transport stdio.
+# MCP_TRANSPORT="streamable-http"
+# MCP_HOST="127.0.0.1"
+# MCP_PORT="8888"

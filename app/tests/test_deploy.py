@@ -40,6 +40,9 @@ class DeployTests(unittest.TestCase):
     def test_open_without_token(self):
         self.assertEqual(self.client().get("/api/catalog").status_code, 200)
 
+    def test_dashboard_is_never_served_stale(self):
+        self.assertEqual(self.client().get("/").headers["cache-control"], "no-cache")
+
     def test_token_protects_everything_but_health(self):
         os.environ["CATALOG_TOKEN"] = "s3cret-token"
         client = self.client()
@@ -154,6 +157,33 @@ class CatalogMcpHttpTests(unittest.TestCase):
             self.assertEqual(ok.status_code, 200)
         with TestClient(sse_app(), base_url="http://127.0.0.1:8888") as client:
             self.assertEqual(client.get("/sse").status_code, 401)
+
+    def test_mcp_reads_transport_and_host_from_settings(self):
+        Path(os.environ["CATALOG_ENV_FILE"]).write_text(
+            'MCP_TRANSPORT="streamable-http"\nMCP_HOST="0.0.0.0"\nMCP_PORT="8899"\n', encoding="utf-8")
+        env = {key: value for key, value in os.environ.items()
+               if key not in ("CATALOG_TOKEN", "MCP_TRANSPORT", "MCP_HOST", "MCP_PORT")}
+        result = subprocess.run([sys.executable, "-m", "app", "mcp"], cwd=ROOT, env=env, input="",
+                                capture_output=True, text=True, timeout=60)
+        # It chose HTTP on 0.0.0.0 from .env, so it refuses to start without a token.
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("0.0.0.0", result.stderr)
+
+    def test_mcp_settings_are_validated(self):
+        from app.main import app
+
+        client = TestClient(app)
+        for changes in ({"MCP_TRANSPORT": "websocket"}, {"MCP_PORT": "99999"}, {"MCP_PORT": "abc"},
+                        {"MCP_HOST": "http://example.com"}, {"MCP_HOST": "two words"}):
+            with self.subTest(changes=changes):
+                self.assertEqual(client.put("/api/settings", json=changes).status_code, 422)
+        ok = client.put("/api/settings", json={"MCP_TRANSPORT": "sse", "MCP_HOST": "0.0.0.0", "MCP_PORT": "9000"})
+        self.assertEqual(ok.status_code, 200)
+        fields = {field["key"]: field for field in ok.json()["fields"]}
+        self.assertEqual((fields["MCP_TRANSPORT"]["value"], fields["MCP_PORT"]["value"]), ("sse", "9000"))
+        self.assertEqual(fields["MCP_TRANSPORT"]["group"], "MCP server")
+        for key in ("MCP_TRANSPORT", "MCP_HOST", "MCP_PORT"):
+            os.environ.pop(key, None)
 
     def test_mcp_refuses_public_host_without_token(self):
         env = {key: value for key, value in os.environ.items() if key != "CATALOG_TOKEN"}

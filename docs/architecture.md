@@ -63,6 +63,7 @@ template updates without conflicts.
 |---|---|---|
 | Enabled flag, enabled channels, per-agent model | SQLite `.catalog.sqlite3` (`CATALOG_DB`) | Dashboard, API, CLI `enable`/`disable` |
 | Provider keys, server addresses, default model, keys in `requires` | `.env` (`CATALOG_ENV_FILE`) | Settings dialog / `PUT /api/settings`, or by hand |
+| MCP transport, host and port (`MCP_*`) | `.env` | Settings → MCP server; read by `python -m app mcp` at startup |
 | Access token, read-only flag, host, port | Environment or `.env` | Operator only (never the dashboard) |
 
 - `load_environment()` loads `.env` without overriding variables already set, so

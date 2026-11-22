@@ -46,7 +46,8 @@ def get_item(item_id: str):
 
 @router.get("/")
 def dashboard():
-    return FileResponse(Path(__file__).with_name("catalog.html"))
+    # Revalidate on every visit so an updated dashboard is never served from the browser cache.
+    return FileResponse(Path(__file__).with_name("catalog.html"), headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/api/catalog")

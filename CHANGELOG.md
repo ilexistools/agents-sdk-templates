@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add an **MCP server** section to Settings: transport (stdio, streamable-http,
+  sse), host and port, with the exact command or URL clients should use. The
+  catalog MCP server now loads `.env`, so these settings apply to
+  `python -m app mcp` without flags. `env-example` no longer sets
+  `MCP_TRANSPORT`; MCP clients that start the server should pass `--transport stdio`.
+- Serve the dashboard with `Cache-Control: no-cache`, so browsers never show a stale
+  copy after an update.
 - Fix the catalog MCP server over HTTP: `--transport streamable-http` and `sse`
   failed at startup (`Server.run()` has no `transport` argument in MCP SDK 2).
   Both now run under uvicorn, use `CATALOG_TOKEN` like the dashboard and refuse a

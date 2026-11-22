@@ -103,12 +103,17 @@ def sse_app(host: str = "127.0.0.1"):
 
 
 def main():
+    from app.orchestration.config import load_environment
+
+    # Defaults come from the environment or .env (editable in the dashboard's Settings).
+    # MCP clients that start this server over stdio should pass --transport stdio explicitly.
+    load_environment()
     parser = argparse.ArgumentParser(description="Catalog MCP server.")
     parser.add_argument(
         "--transport",
         choices=("stdio", "streamable-http", "sse"),
         default=os.getenv("MCP_TRANSPORT", "stdio"),
-        help="MCP transport. Can also be set with MCP_TRANSPORT.",
+        help="MCP transport. Defaults to MCP_TRANSPORT (Settings → MCP server) or stdio.",
     )
     parser.add_argument("--host", default=os.getenv("MCP_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.getenv("MCP_PORT", "8888")))
@@ -123,10 +128,8 @@ def main():
         return
 
     from app.__main__ import is_loopback
-    from app.orchestration.config import load_environment
     from app.security import token_configured
 
-    load_environment()
     if not is_loopback(args.host) and not token_configured() and not args.insecure:
         parser.exit(2, f"Refusing to serve MCP on {args.host} without CATALOG_TOKEN.\n")
     import uvicorn

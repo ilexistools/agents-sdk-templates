@@ -41,6 +41,16 @@ FIELDS = [
      "default": DEFAULT_DECISION_MODEL, "help": "Used by GPTDecision."},
     {"key": "LOCAL_MODEL_NAME", "group": PROVIDERS["local"].label, "provider": "local", "label": "Default model",
      "default": "local-model", "help": "Used by GPTLocal and GPTLocalAgent when called directly in code."},
+    {"key": "MCP_TRANSPORT", "group": "MCP server", "label": "Transport",
+     "default": "stdio", "choices": ["stdio", "streamable-http", "sse"],
+     "help": "Used by python -m app mcp when no --transport is given. stdio: the MCP client starts the "
+             "server itself. streamable-http (recommended for remote clients) or sse: the server runs on its own "
+             "and clients connect to a URL. Restart the MCP server after changing it."},
+    {"key": "MCP_HOST", "group": "MCP server", "label": "Host", "default": "127.0.0.1",
+     "help": "Address for the HTTP transports. 127.0.0.1 keeps it on this computer; any other address "
+             "requires CATALOG_TOKEN."},
+    {"key": "MCP_PORT", "group": "MCP server", "label": "Port", "default": "8888",
+     "help": "Port for the HTTP transports."},
     {"key": "LOCAL_DISABLE_TRACING", "group": "Advanced", "label": "Disable tracing for other providers",
      "default": "true", "choices": ["true", "false"],
      "help": "Keep true so runs on non-OpenAI providers do not send traces to OpenAI."},
@@ -69,7 +79,8 @@ def _hint(value: str) -> str:
 
 
 SECRET_HINTS = ("KEY", "TOKEN", "SECRET", "PASSWORD")
-RESERVED = {"CATALOG_TOKEN", "CATALOG_SETTINGS_READONLY", "CATALOG_DB", "CATALOG_ENV_FILE", "HOST", "PORT"}
+RESERVED = {"CATALOG_TOKEN", "CATALOG_SETTINGS_READONLY", "CATALOG_DB", "CATALOG_ENV_FILE", "HOST", "PORT",
+            "MCP_TRANSPORT", "MCP_HOST", "MCP_PORT"}
 
 
 def item_fields() -> list[dict]:
@@ -149,6 +160,10 @@ def validate(key: str, value: str) -> None:
         raise ValueError(f"{field['label']}: choose one of {', '.join(field['choices'])}.")
     if key == "DEFAULT_MODEL" and value:
         validate_model_ref(value)
+    if key == "MCP_PORT" and value and not (value.isdigit() and 1 <= int(value) <= 65535):
+        raise ValueError("Port must be a number between 1 and 65535.")
+    if key == "MCP_HOST" and value and not re.fullmatch(r"[A-Za-z0-9.:\-\[\]]{1,253}", value):
+        raise ValueError("Host must be an IP address or host name, without spaces or a scheme.")
     if key.endswith("_BASE_URL") and value and not re.match(r"^https?://\S+$", value):
         raise ValueError("Base URL must start with http:// or https://.")
 
